@@ -3,6 +3,10 @@
 **A classic-style desktop music player for Spotify Premium on Windows.**
 Skinned, dockable windows, a real playlist editor, MilkDrop-style visuals, and a design built around one goal: use as few Spotify requests as possible, so you don't hit Spotify's cooldowns.
 
+![Winampify: the player, Up Next, playlist editor, library and queue windows docked together](docs/screenshots/overview.png)
+
+<p align="center"><img src="docs/screenshots/milkdrop.png" alt="The MilkDrop visualizer window" width="400"></p>
+
 > Unofficial, fan-made project. Not made, endorsed or supported by Spotify or Winamp. "Spotify" and "Winamp" are trademarks of their respective owners.
 
 ## Download
