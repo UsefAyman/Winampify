@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Winampify</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="64x64" href="icons/icon-64.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="theme-color" content="#2c2d40">
+</head>
+<body>
+<div id="desktop">
+
+  <!-- ============ MAIN WINDOW (275 x 116) ============ -->
+  <div class="win classic" id="w-main" data-win="main">
+    <div class="zoom">
+      <div class="title">
+        <span class="tbtn" data-act="menu" title="Menu">&#8801;</span>
+        <span class="ridge"></span><span class="tname" data-px="WINAMPIFY">WINAMPIFY</span><span class="ridge"></span>
+        <span class="tbtn" data-act="minimize" title="Minimize">&#8211;</span>
+        <span class="tbtn" data-act="shade" title="Shade">&#9633;</span>
+        <span class="tbtn" data-act="close" title="Close">&times;</span>
+      </div>
+      <div class="body main-body">
+        <div class="lcd" id="lcd">
+          <div class="clutter"><i data-px data-cl="o" title="Options menu">O</i><i data-px data-cl="a" title="Toggle Always On Top">A</i><i data-px data-cl="i" title="Song info (release date, album, track...)">I</i><i data-px data-cl="d" title="Toggle Doublesize Mode">D</i><i data-px data-cl="v" title="Visualization menu">V</i></div>
+          <span id="playstate" class="playstate stopped"></span>
+          <canvas id="timecv" width="64" height="16" title="Click: elapsed / remaining"></canvas>
+          <canvas id="viscv" width="76" height="16" title="Click: change visualizer style  |  Double-click: MilkDrop"></canvas>
+        </div>
+        <div class="marquee" id="marquee"><span id="marqtext">WINAMPIFY</span></div>
+        <span class="lcdbox" id="kbps"></span><span class="lbl" style="left:129px" data-px>kbps</span>
+        <span class="lcdbox" id="khz"></span><span class="lbl" style="left:168px" data-px>kHz</span>
+        <span class="ind" id="ind-mono" data-px>mono</span><span class="ind" id="ind-stereo" data-px>stereo</span>
+        <div class="hslider vol" id="vol" title="Volume"><div class="hthumb"></div></div>
+        <div class="hslider bal" id="bal" title="Balance (look only)"><div class="hthumb"></div></div>
+        <span class="led-btn" id="tog-eq" title="Up Next (Spotify queue)"><i></i><span data-px>UP</span></span>
+        <span class="led-btn" id="tog-pl" title="Playlist"><i></i><span data-px>PL</span></span>
+        <div class="posbar" id="seek" title="Seek"><div class="posthumb"></div></div>
+        <button class="tb" id="b-prev" title="Previous (Z)"></button>
+        <button class="tb" id="b-play" title="Play (X)"></button>
+        <button class="tb" id="b-pause" title="Pause (C)"></button>
+        <button class="tb" id="b-stop" title="Stop (V)"></button>
+        <button class="tb" id="b-next" title="Next (B)"></button>
+        <button class="tb" id="b-eject" title="Open library (L)"></button>
+        <span class="led-btn" id="tog-shuf" title="Shuffle (S)"><i></i><span data-px>SHUFFLE</span></span>
+        <span class="led-btn" id="tog-rep" title="Repeat (R)"><i></i><b>&#8635;</b></span>
+        <span class="badge" id="acct" title="Show / hide the Spotify library"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ UP NEXT (275 x 116, where the equalizer used to be) ============ -->
+  <div class="win classic" id="w-eq" data-win="eq">
+    <div class="zoom">
+      <div class="title">
+        <span class="ridge"></span><span class="tname" data-px="WINAMPIFY UP NEXT">WINAMPIFY UP NEXT</span><span class="ridge"></span>
+        <span class="tbtn" data-act="shade" title="Shade">&#9633;</span>
+        <span class="tbtn" data-act="close" title="Close">&times;</span>
+      </div>
+      <div class="body upn-body">
+        <div class="upn-list" id="upn-list" tabindex="0"></div>
+        <div class="upn-foot">
+          <span class="pb" id="upn-refresh" title="Load the queue again" data-px>RELOAD</span>
+          <span class="pb" id="upn-add" title="Open the library to queue songs (right-click a song > Add to queue)" data-px>ADD</span>
+          <span class="pb" id="upn-queue" title="Show the songs you queued yourself" data-px>QUEUE</span>
+          <span class="upn-count" id="upn-count"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ QUEUE (songs you added with "Add to queue") ============ -->
+  <div class="win classic hidden" id="w-qu" data-win="qu">
+    <div class="zoom">
+      <div class="title">
+        <span class="ridge"></span><span class="tname" data-px="WINAMPIFY QUEUE">WINAMPIFY QUEUE</span><span class="ridge"></span>
+        <span class="tbtn" data-act="shade" title="Shade">&#9633;</span>
+        <span class="tbtn" data-act="close" title="Close">&times;</span>
+      </div>
+      <div class="body upn-body">
+        <div class="upn-list" id="qu-list" tabindex="0"></div>
+        <div class="upn-foot">
+          <span class="pb" id="qu-add" title="Open the library to queue songs (right-click a song > Add to queue)" data-px>ADD</span>
+          <span class="pb" id="qu-clear" title="Forget this list (Spotify can't remove songs from its queue)" data-px>CLEAR</span>
+          <span class="upn-count" id="qu-count"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PLAYLIST ============ -->
+  <div class="win classic" id="w-pl" data-win="pl">
+    <div class="zoom">
+      <div class="title">
+        <span class="ridge"></span><span class="tname" data-px="WINAMPIFY PLAYLIST">WINAMPIFY PLAYLIST</span><span class="ridge"></span>
+        <span class="tbtn" data-act="shade" title="Shade">&#9633;</span>
+        <span class="tbtn" data-act="close" title="Close">&times;</span>
+      </div>
+      <div class="body pl-body">
+        <div class="pllist" id="pllist" tabindex="0"></div>
+        <div class="plfoot">
+          <span class="pb" id="pl-add" title="Open library to add songs" data-px>ADD</span>
+          <span class="pb" id="pl-rem" title="Remove selected (Del)" data-px>REM</span>
+          <span class="pb" id="pl-sel" title="Select all (Ctrl+A)" data-px>SEL</span>
+          <span class="pb" id="pl-misc" title="Sort and shuffle" data-px>MISC</span>
+          <div class="plmid">
+            <span class="pltime" id="pltime">0:00/0:00</span>
+            <div class="mini">
+              <span data-t="prev" title="Previous"></span><span data-t="play" title="Play"></span><span data-t="pause" title="Pause"></span><span data-t="stop" title="Stop"></span><span data-t="next" title="Next"></span><span data-t="eject" title="Library"></span>
+            </div>
+          </div>
+          <span class="plcur" id="plcur">:</span>
+          <span class="pb two" id="pl-list" title="List options"><span data-px>LIST</span><span data-px>OPTS</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MEDIA LIBRARY ============ -->
+  <div class="win lib" id="w-lib" data-win="lib">
+    <div class="title">
+      <span class="ridge"></span><span class="tname">WINAMPIFY LIBRARY</span><span class="ridge"></span>
+      <span class="tbtn" data-act="close" title="Close">&times;</span>
+    </div>
+    <div class="body lib-body">
+      <div class="login" id="login">
+        <h2>Connect your Spotify account</h2>
+        <ol>
+          <li>Open <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com/dashboard</a> and click <b>Create app</b>.</li>
+          <li>Add this <b>Redirect URI</b> exactly:<br><code id="redir"></code></li>
+          <li>Tick <b>Web API</b> and <b>Web Playback SDK</b>, then save.</li>
+          <li>Copy the app's <b>Client ID</b> and paste it here:</li>
+        </ol>
+        <div class="loginrow">
+          <input id="cid" placeholder="Client ID" spellcheck="false" autocomplete="off">
+          <button class="btn" id="b-login">Connect</button>
+        </div>
+        <p class="note">Needs Spotify Premium. Your login happens on Spotify's own page; this app never sees your password.</p>
+        <p class="err" id="loginerr"></p>
+      </div>
+      <div class="libmain" id="libmain">
+        <div class="treecol"><div class="treehead" id="treehead"></div><div class="tree" id="tree"></div></div>
+        <div class="libsplit" id="libsplit" title="Drag to resize the sidebar"></div>
+        <div class="pane">
+          <div class="searchbar">
+            <button class="btn sm" id="lib-back" title="Back">&#9664;</button>
+            <input id="q" placeholder="Search songs, artists, albums, playlists..." spellcheck="false">
+            <button class="btn sm" id="b-search">Search</button>
+          </div>
+          <div class="tabs" id="tabs"></div>
+          <div class="viewhead" id="viewhead"></div>
+          <div class="tablewrap"><table class="grid" id="grid"><thead></thead><tbody></tbody></table></div>
+          <div class="libfoot">
+            <button class="btn" id="lib-play">Play</button>
+            <button class="btn" id="lib-enq">Enqueue</button>
+            <button class="btn" id="lib-more">More</button>
+            <span class="libstatus" id="libstatus"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ NOW PLAYING (cover art + lyrics) ============ -->
+  <div class="win lib lyr hidden" id="w-lyr" data-win="lyr">
+    <div class="title">
+      <span class="ridge"></span><span class="tname">WINAMPIFY NOW PLAYING</span><span class="ridge"></span>
+      <span class="tbtn" data-act="close" title="Close">&times;</span>
+    </div>
+    <div class="body lyr-body">
+      <div class="np-tabs">
+        <span class="npbtn" id="np-cover" title="Show only the cover art"><i></i>Cover art</span>
+        <span class="npbtn" id="np-lyr" title="Show only the lyrics"><i></i>Lyrics</span>
+        <span class="lcdtag" id="lyr-mode"></span>
+      </div>
+      <div class="np-art" id="np-art"><img id="np-img" alt=""></div>
+      <div class="np-info"><div class="np-title" id="np-title">Nothing playing</div><div class="np-artist" id="np-artist"></div></div>
+      <div class="lyr-text" id="lyr-text"><div class="lyr-msg">Play a song and its lyrics show up here.</div></div>
+      <div class="lyr-foot">
+        <button class="btn sm" id="lyr-early" title="Lyrics are late: show them earlier">&#9664; Earlier</button>
+        <span class="lcdtag" id="lyr-off">0.0s</span>
+        <button class="btn sm" id="lyr-late" title="Lyrics are early: show them later">Later &#9654;</button>
+        <button class="btn sm" id="lyr-retry" title="Look the lyrics up again">Reload</button>
+        <span class="lyr-src">lyrics: lrclib.net</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MILKDROP (Butterchurn) ============ -->
+  <div class="win lib mdwin hidden" id="w-md" data-win="md">
+    <div class="title">
+      <span class="ridge"></span><span class="tname">WINAMPIFY MILKDROP</span><span class="ridge"></span>
+      <span class="tbtn" data-act="close" title="Close">&times;</span>
+    </div>
+    <div class="body md-body">
+      <div class="md-stage" id="md-stage" title="Double-click: fullscreen"><canvas id="mdcv"></canvas><div class="md-msg" id="md-msg"></div></div>
+      <div class="md-bar">
+        <button class="btn sm" id="md-prev" title="Previous preset">&#9664;</button>
+        <button class="btn sm" id="md-next" title="Next preset">&#9654;</button>
+        <button class="btn sm" id="md-rand" title="Random preset">Random</button>
+        <span class="npbtn" id="md-auto" title="Change preset every 20 seconds"><i></i>Auto</span>
+        <span class="md-name" id="md-name"></span>
+        <button class="btn sm" id="md-full" title="Fullscreen (Esc to leave)">Fullscreen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ARTIST ============ -->
+  <div class="win lib artwin hidden" id="w-art" data-win="art">
+    <div class="title">
+      <span class="ridge"></span><span class="tname" id="art-title">WINAMPIFY ARTIST</span><span class="ridge"></span>
+      <span class="tbtn" data-act="close" title="Close">&times;</span>
+    </div>
+    <div class="body art-body" id="art-body"></div>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

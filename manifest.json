@@ -1,0 +1,14 @@
+{
+  "name": "Winampify",
+  "short_name": "Winampify",
+  "description": "A classic-style desktop player for your Spotify account.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#163040",
+  "theme_color": "#2c2d40",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

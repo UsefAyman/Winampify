@@ -1,0 +1,13 @@
+# installed packages and build output
+node_modules/
+release/
+dist/
+installer/obj/
+
+# downloaded tools (WiX)
+tools/
+
+# logs and local files
+*.log
+.env
+.claude/

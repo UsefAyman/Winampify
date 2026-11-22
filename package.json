@@ -1,0 +1,19 @@
+{
+  "name": "winampify",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Classic-style desktop player for your Spotify account",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "node build.js"
+  },
+  "devDependencies": {
+    "electron": "github:castlabs/electron-releases#v45.2.1+wvcus",
+    "rcedit": "^5.0.2"
+  },
+  "dependencies": {
+    "butterchurn": "^2.6.7",
+    "butterchurn-presets": "^2.4.7"
+  }
+}

@@ -1,0 +1,561 @@
+/* Winampify — classic desktop-player look, drawn in CSS */
+:root{
+  --z:2;
+  --panel1:#3c3d55; --panel2:#262738; --hi:#6d6f8e; --lo:#0f1019;
+  --g:#00f800; --gdim:#0b2e0b;
+  --btn1:#c4c7d6; --btn2:#8c90a8; --btnlo:#3b3e52; --ico:#232538;
+  --font:"Arial","Tahoma",sans-serif;
+  --mono:"Lucida Console","Consolas",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{background:#1b3a4b radial-gradient(ellipse at 30% 20%,#2a5a70 0%,#163040 55%,#0c1c26 100%);
+  font-family:var(--font);color:#ddd;user-select:none}
+#desktop{position:relative;width:100%;height:100%}
+canvas{image-rendering:pixelated}
+
+/* ---------------- window frame ---------------- */
+.win{position:absolute;left:0;top:0}
+.win.hidden{display:none}
+.classic .zoom{zoom:var(--z);width:275px;position:relative;
+  background:linear-gradient(180deg,var(--panel1) 0%,#30314a 40%,var(--panel2) 100%);
+  border:1px solid var(--lo);box-shadow:inset 1px 1px 0 var(--hi),inset -1px -1px 0 #14151f}
+.title{height:14px;display:flex;align-items:center;gap:2px;padding:0 4px;cursor:default;
+  background:linear-gradient(180deg,#4a4b63,#2c2d40)}
+.ridge{flex:1;height:8px;margin:0 3px;
+  background:repeating-linear-gradient(180deg,#d6c89a 0 1px,#5c5440 1px 2px)}
+.tname{font:bold 7px/14px var(--font);letter-spacing:1px;color:#e8e8f0;white-space:nowrap;padding:0 2px}
+.win:not(.active) .ridge{filter:grayscale(1) brightness(.6)}
+.win:not(.active) .tname{color:#8a8ca0}
+.tbtn{width:9px;height:9px;flex:none;font:bold 7px/8px var(--font);text-align:center;color:#d8dae8;cursor:pointer;
+  background:linear-gradient(#555870,#2a2c3c);border:1px solid #000;box-shadow:inset 1px 1px 0 #7a7d96}
+.tbtn:active{background:#1c1d28}
+.win.shaded .body{display:none}
+
+/* ---------------- main window (absolute, 275x102 under title) ---------------- */
+.main-body{position:relative;height:102px}
+.main-body > *{position:absolute}
+.lcd{left:9px;top:8px;width:94px;height:40px;background:#000;
+  border:1px solid #000;box-shadow:inset 1px 1px 0 #000,1px 1px 0 var(--hi),-1px -1px 0 #1a1b26}
+.clutter{position:absolute;left:0;top:0;width:8px;height:38px;background:linear-gradient(90deg,#2d2e40,#3b3c52);
+  display:flex;flex-direction:column;justify-content:space-around;align-items:center;border-right:1px solid #000}
+.clutter i{font:bold 4px/5px var(--font);font-style:normal;color:#8d90a8}
+.playstate{position:absolute;left:16px;top:6px}
+.playstate.playing{width:0;height:0;border-left:7px solid var(--g);border-top:4px solid transparent;border-bottom:4px solid transparent}
+.playstate.paused{width:7px;height:8px;border-left:2px solid var(--g);border-right:2px solid var(--g);left:16px}
+.playstate.stopped{width:6px;height:6px;background:var(--g);top:7px}
+#timecv{position:absolute;left:27px;top:3px;width:64px;height:16px;cursor:pointer}
+#viscv{position:absolute;left:14px;top:22px;width:76px;height:16px;cursor:pointer}
+.marquee{left:110px;top:10px;width:155px;height:13px;background:#000;overflow:hidden;white-space:nowrap;
+  border:1px solid #000;box-shadow:1px 1px 0 var(--hi);cursor:default;color:var(--g);font:7px/11px var(--mono)}
+.marquee span{position:absolute;left:0;top:0;padding-left:2px}
+.lcdbox{top:27px;height:10px;background:#000;color:var(--g);font:7px/9px var(--mono);text-align:right;padding:0 1px;
+  border:1px solid #000;box-shadow:1px 1px 0 var(--hi)}
+#kbps{left:110px;width:17px}
+#khz{left:149px;width:17px}
+.lbl{top:28px;font:6px/9px var(--font);color:#c8cad8}
+.ind{top:28px;font:bold 6px/9px var(--font);color:#6a6c82}
+#ind-mono{left:212px} #ind-stereo{left:236px}
+.ind.on{color:var(--g)}
+
+/* horizontal sliders */
+.hslider{top:43px;height:13px;cursor:pointer;border:1px solid #000;
+  box-shadow:inset 0 0 0 1px #0006,1px 1px 0 var(--hi)}
+.hslider::before{content:"";position:absolute;left:2px;right:2px;top:4px;height:3px;background:#0008}
+.vol{left:107px;width:68px;background:linear-gradient(hsl(var(--h,60) 90% 55%),hsl(var(--h,60) 85% 30%))}
+.bal{left:177px;width:38px;background:linear-gradient(hsl(var(--h,120) 80% 50%),hsl(var(--h,120) 80% 25%))}
+.hthumb{position:absolute;top:0;left:0;width:14px;height:11px;border:1px solid #000;
+  background:linear-gradient(90deg,#d8dae6,#9a9db2);
+  box-shadow:inset 1px 1px 0 #fff}
+.hthumb::after{content:"";position:absolute;left:4px;top:2px;width:4px;height:5px;
+  background:repeating-linear-gradient(90deg,#4a4d62 0 1px,transparent 1px 2px)}
+.led-btn{display:flex;align-items:center;gap:2px;height:12px;padding:0 3px 0 2px;cursor:pointer;
+  font:bold 6px/10px var(--font);color:#e6e8f2;border:1px solid #000;
+  background:linear-gradient(#5b5e78,#34364a);box-shadow:inset 1px 1px 0 #8a8daa}
+.led-btn i{width:4px;height:4px;flex:none;background:#2a4a2a;border:1px solid #000}
+.led-btn.on i{background:#3f3;box-shadow:0 0 2px #3f3}
+.led-btn:active{background:linear-gradient(#34364a,#5b5e78)}
+#tog-eq{left:219px;top:44px;width:23px}
+#tog-pl{left:242px;top:44px;width:23px}
+.posbar{left:16px;top:58px;width:248px;height:10px;cursor:pointer;background:#141522;
+  border:1px solid #000;box-shadow:inset 1px 1px 0 #000,1px 1px 0 var(--hi)}
+.posthumb{position:absolute;top:0;left:0;width:29px;height:8px;border:1px solid #000;
+  background:linear-gradient(#d8dae6,#8f92a8);box-shadow:inset 1px 1px 0 #fff}
+.posthumb::after{content:"";position:absolute;left:11px;top:1px;width:5px;height:4px;
+  background:repeating-linear-gradient(90deg,#4a4d62 0 1px,transparent 1px 2px)}
+.posbar.empty .posthumb{display:none}
+
+/* transport */
+.tb{top:74px;width:23px;height:18px;padding:0;cursor:pointer;border:1px solid #1c1e2c;
+  background:linear-gradient(var(--btn1),var(--btn2));box-shadow:inset 1px 1px 0 #eef,inset -1px -1px 0 var(--btnlo)}
+.tb:active{background:linear-gradient(var(--btn2),var(--btn1));box-shadow:inset 1px 1px 0 var(--btnlo)}
+.tb svg{width:10px;height:9px;display:block;margin:auto;fill:var(--ico)}
+#b-prev{left:16px} #b-play{left:39px} #b-pause{left:62px} #b-stop{left:85px} #b-next{left:108px;width:22px}
+#b-eject{left:136px;top:75px;width:22px;height:16px}
+#tog-shuf{left:164px;top:76px;width:44px;height:14px;font-size:6px}
+#tog-rep{left:210px;top:76px;width:27px;height:14px}
+#tog-rep b{font:bold 9px/10px var(--font)}
+.badge{left:249px;top:76px;width:15px;height:15px;cursor:pointer;border-radius:3px;border:1px solid #000;
+  background:linear-gradient(135deg,#6a6c84,#2c2e3e)}
+.badge::after{content:"\266A";position:absolute;left:0;top:0;width:100%;text-align:center;
+  font:bold 10px/13px var(--font);color:#e8e8f0}
+.badge.on{background:linear-gradient(135deg,#3a8a3a,#123a12)}
+
+/* ---------------- equalizer ---------------- */
+.eq-body{position:relative;height:102px}
+.eq-body > *{position:absolute}
+#eq-on{left:14px;top:4px;width:25px}
+#eq-auto{left:40px;top:4px;width:32px}
+#eqcv{left:86px;top:3px;width:113px;height:19px;background:#000;border:1px solid #000;box-shadow:1px 1px 0 var(--hi)}
+.plain-btn{left:217px;top:4px;width:44px;height:12px;cursor:pointer;text-align:center;
+  font:bold 6px/10px var(--font);color:#e6e8f2;border:1px solid #000;
+  background:linear-gradient(#5b5e78,#34364a);box-shadow:inset 1px 1px 0 #8a8daa}
+.plain-btn:active{background:linear-gradient(#34364a,#5b5e78)}
+.db{left:40px;width:20px;font:bold 5px/6px var(--font);color:#e6e0a0;text-align:right}
+.db::after{content:"";position:absolute;left:22px;top:3px;width:4px;height:1px;background:#e6e0a0}
+/* faint guide lines at +12 / 0 / -12 dB running behind the sliders */
+.eqguides{position:absolute;top:29px;height:53px;pointer-events:none;
+  background:linear-gradient(#5a5c76,#5a5c76) 0 0/100% 1px no-repeat,
+             linear-gradient(#6e7090,#6e7090) 0 26px/100% 1px no-repeat,
+             linear-gradient(#5a5c76,#5a5c76) 0 52px/100% 1px no-repeat}
+.vs{position:absolute;top:24px;width:14px;height:63px;cursor:pointer;
+  background:linear-gradient(90deg,#1a1b28 0 4px,transparent 4px 10px,#1a1b28 10px)}
+.vs::before{content:"";position:absolute;left:4px;width:6px;top:0;bottom:0;border:1px solid #000;
+  background:linear-gradient(90deg,hsl(var(--h,52) 95% 62%),hsl(var(--h,52) 90% 38%))}
+.vthumb{position:absolute;left:1px;width:12px;height:11px;border:1px solid #000;
+  background:linear-gradient(90deg,#d8dae6,#9a9db2);box-shadow:inset 1px 1px 0 #fff}
+.vthumb::after{content:"";position:absolute;left:2px;top:4px;width:6px;height:1px;background:#3a3d52}
+.eqlbl{position:absolute;top:89px;font:bold 5px/7px var(--font);color:#e6e8f2;text-align:center;width:24px;margin-left:-5px}
+
+/* ---------------- playlist ---------------- */
+.pl-body{position:relative;padding:0 18px 0 11px;
+  background:linear-gradient(90deg,#2a2b3d 0 11px,transparent 11px calc(100% - 18px),#2a2b3d calc(100% - 18px))}
+.pllist{height:150px;overflow-y:auto;background:#000;border:1px solid #000;box-shadow:1px 1px 0 var(--hi);
+  font:8px/12px var(--font);color:var(--g);outline:none;margin-right:-12px;padding-right:0}
+.pllist::-webkit-scrollbar{width:9px}
+.pllist::-webkit-scrollbar-track{background:#2a2b3d}
+.pllist::-webkit-scrollbar-thumb{background:linear-gradient(90deg,#c4c7d6,#8c90a8);border:1px solid #000}
+.pllist{scrollbar-color:#a8abbe #2a2b3d}
+.plrow{display:flex;padding:0 3px;cursor:default;white-space:nowrap}
+.plrow .t{flex:1;overflow:hidden;text-overflow:ellipsis}
+.plrow .d{padding-left:6px}
+.plrow.sel{background:#0000c6}
+.plrow.cur{color:#fff}
+.plempty{color:#00a800;padding:8px;text-align:center;line-height:12px}
+.plfoot{display:flex;align-items:center;height:38px;margin:0 -18px 0 -11px;padding:0 6px 0 11px;gap:3px;
+  background:linear-gradient(180deg,#3a3b52,#26273a);border-top:1px solid #000}
+.pb{width:22px;height:18px;cursor:pointer;text-align:center;font:bold 5px/16px var(--font);color:#232538;
+  border:1px solid #1c1e2c;background:linear-gradient(var(--btn1),var(--btn2));box-shadow:inset 1px 1px 0 #eef,inset -1px -1px 0 var(--btnlo)}
+.pb:active{background:linear-gradient(var(--btn2),var(--btn1))}
+.pb.two{line-height:7px;padding-top:2px}
+.plmid{display:flex;flex-direction:column;align-items:center;gap:2px;margin-left:8px}
+.pltime{background:#000;color:var(--g);font:6px/9px var(--mono);padding:0 4px;min-width:62px;text-align:center;
+  border:1px solid #000;box-shadow:1px 1px 0 var(--hi)}
+.mini{display:flex;gap:1px}
+.mini span{width:8px;height:7px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.mini svg{width:6px;height:5px;fill:#c8cad8}
+.mini span:active svg{fill:var(--g)}
+.plcur{margin-left:auto;margin-right:3px;background:#000;color:var(--g);font:6px/9px var(--mono);padding:0 3px;
+  min-width:30px;text-align:center;border:1px solid #000;box-shadow:1px 1px 0 var(--hi)}
+
+/* ---------------- library (normal size) ---------------- */
+.lib{width:720px;height:480px;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,var(--panel1),var(--panel2));border:1px solid var(--lo);
+  box-shadow:inset 1px 1px 0 var(--hi),0 6px 24px #0008}
+.lib .title{height:20px}
+.lib .tname{font-size:10px;line-height:20px}
+.lib .ridge{height:10px}
+.lib .tbtn{width:13px;height:13px;font-size:11px;line-height:11px}
+.lib-body{flex:1;display:flex;min-height:0;padding:4px;font-size:12px}
+.login{flex:1;overflow:auto;background:#0b0c14;border:1px solid #000;padding:14px 22px;color:#cfd3ea;line-height:1.5}
+.login h2{margin:0 0 8px;font-size:16px;color:var(--g);font-family:var(--mono)}
+.login a{color:#7fb2ff}
+.login code{background:#000;color:var(--g);padding:2px 6px;font:12px var(--mono);user-select:all;display:inline-block;margin-top:2px}
+.loginrow{display:flex;gap:6px;margin:10px 0}
+.loginrow input{flex:1}
+.note{color:#8a8fb0;font-size:11px}
+.err{color:#ff7070;font-size:12px;white-space:pre-wrap}
+input:not([type]){background:#000;color:var(--g);border:1px solid #000;box-shadow:inset 1px 1px 0 #333;
+  font:12px var(--mono);padding:4px 6px;outline:none;user-select:text}
+input:not([type]):focus{box-shadow:inset 0 0 0 1px #0a0}
+.btn{font:bold 11px var(--font);padding:3px 10px;cursor:pointer;color:var(--ico);
+  background:linear-gradient(var(--btn1),var(--btn2));border:1px solid #1c1e2c;box-shadow:inset 1px 1px 0 #eef,inset -1px -1px 0 var(--btnlo)}
+.btn:active{background:linear-gradient(var(--btn2),var(--btn1))}
+.btn.sm{padding:3px 7px}
+.btn:disabled{opacity:.5;cursor:default}
+.libmain{flex:1;display:flex;gap:4px;min-height:0}
+.tree{flex:1;overflow:auto;background:#000;border:1px solid #000;font:12px/18px var(--font);color:#cfd3ea;padding:3px 0}
+.tree .node{padding:0 6px 0 calc(6px + var(--lvl,0)*12px);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree .node:hover{background:#1a1d33}
+.tree .node.sel{background:#0000c6;color:#fff}
+.tree .grp{color:var(--g);font-weight:bold;cursor:default;margin-top:4px}
+.tree .grp:hover{background:none}
+.tree .grp.dim{color:#7a7e9c;font-weight:normal}
+.treecol{width:190px;display:flex;flex-direction:column;gap:4px;min-height:0}
+.treehead{background:#000;border:1px solid #000;padding:5px 5px 6px}
+.th-top{display:flex;align-items:center;margin-bottom:5px}
+.th-title{flex:1;color:var(--g);font:bold 12px var(--font)}
+.th-plus{padding:0 7px;font-size:14px;line-height:16px}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.chips .chip{text-align:center;width:100%}
+.chip{font-weight:normal;padding:2px 7px;font-size:11px}
+.chip.on{background:linear-gradient(#8f8,#2b2)}
+.chip.x{padding:2px 6px;font-weight:bold}
+.pane{flex:1;display:flex;flex-direction:column;min-width:0;gap:4px}
+.searchbar{display:flex;gap:4px}
+.searchbar input{flex:1}
+.tabs{display:flex;gap:2px}
+.tabs:empty{display:none}
+.tabs .btn{font-weight:normal}
+.tabs .btn.on{background:linear-gradient(#8f8,#2b2)}
+.viewhead{display:flex;align-items:center;gap:8px;color:#e6e8ff;font-weight:bold;min-height:20px}
+.viewhead img{width:36px;height:36px;border:1px solid #000}
+.viewhead .sub{font-weight:normal;color:#9aa0c4;font-size:11px}
+.viewhead .btn{font-weight:normal}
+.tablewrap{flex:1;overflow:auto;background:#000;border:1px solid #000}
+.grid{width:100%;border-collapse:collapse;font:12px/18px var(--font);color:var(--g);table-layout:fixed}
+.grid th{position:sticky;top:0;background:linear-gradient(var(--btn1),var(--btn2));color:var(--ico);text-align:left;
+  font-size:11px;padding:0 5px;border-right:1px solid #000;border-bottom:1px solid #000}
+.grid td{padding:0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grid tr.sel td{background:#0000c6;color:#fff}
+.grid tr.cur td{color:#fff}
+.grid td.num,.grid th.num{width:36px;text-align:right}
+.grid td.dur,.grid th.dur{width:52px;text-align:right}
+.grid .msg td{color:#9aa0c4;white-space:normal;padding:10px}
+.libfoot{display:flex;gap:4px;align-items:center}
+.libstatus{margin-left:auto;color:#9aa0c4;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------------- popup menus (classic grey) ---------------- */
+.menu{position:fixed;display:none;z-index:99999;min-width:180px;padding:2px;
+  background:#d4d0c8;color:#000;font:11px/18px "Tahoma","Segoe UI",sans-serif;
+  border:1px solid;border-color:#fff #404040 #404040 #fff;box-shadow:inset 1px 1px 0 #d4d0c8,inset -1px -1px 0 #808080,2px 2px 0 #0006}
+.menu .mi{display:flex;align-items:center;padding:0 4px 0 0;cursor:default;white-space:nowrap}
+.menu .mi .ck{width:18px;text-align:center;flex:none}
+.menu .mi .lb{flex:1;padding-right:18px}
+.menu .mi .ky{color:inherit;padding-right:6px;font-size:10px}
+.menu .mi .ar{width:10px;font-size:7px;text-align:right}
+.menu .mi.hot{background:#0a246a;color:#fff}
+.menu .mi.dis{color:#808080;text-shadow:1px 1px 0 #fff}
+.menu .mi.dis.hot{background:#0a246a;color:#808080;text-shadow:none}
+.menu hr{border:0;border-top:1px solid #808080;border-bottom:1px solid #fff;margin:3px 1px}
+
+/* ---------------- lyrics window + yellow button ---------------- */
+.btn.yellow{background:linear-gradient(#fff08a,#e0b400);color:#2a2000;font-weight:bold}
+.btn.yellow:active{background:linear-gradient(#e0b400,#fff08a)}
+.lyr-btn{margin-left:auto;padding:3px 14px}
+.lyr{width:330px;height:480px}
+.lyr-body{flex:1;display:flex;flex-direction:column;gap:4px;min-height:0;overflow:hidden;padding:4px;font-size:12px}
+.lyr-head{display:flex;align-items:center;gap:6px;min-height:20px;min-width:0}
+.lyr-song{flex:1;min-width:0;color:#e6e8ff;font:bold 12px var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lcdtag{background:#000;color:var(--g);font:10px/16px var(--mono);padding:0 5px;border:1px solid #000;box-shadow:1px 1px 0 var(--hi);white-space:nowrap}
+.lcdtag:empty{display:none}
+.lyr-text{position:relative;flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;background:#000;border:1px solid #000;padding:20px 12px;text-align:center;
+  scrollbar-color:#a8abbe #1a1b28;scrollbar-width:thin}
+.lyr-line{font:14px/1.45 var(--font);color:#1f8a1f;padding:4px 0;cursor:pointer;
+  transition:color .35s,opacity .35s,font-size .25s;opacity:.75}
+.lyr-line span{display:inline-block;max-width:100%}
+.lyr-line:hover{opacity:1;color:#4c4}
+.lyr-line.past{color:#0f5a0f;opacity:.55}
+.lyr-line.next{opacity:.95;color:#2fae2f}
+.lyr-line.intro{letter-spacing:4px;font-size:11px}
+/* the playing line grows by font size (not by zooming), so it re-wraps inside the box instead of being cut off at the edges */
+.lyr-line.on{opacity:1;font-size:16px;font-weight:bold}
+.lyr-line.on span{color:transparent;-webkit-background-clip:text;background-clip:text;
+  background-image:linear-gradient(90deg,#fff 0,#fff var(--p,0%),#3f3 var(--p,0%),#3f3 100%);
+  text-shadow:none;filter:drop-shadow(0 0 4px #0f06)}
+.lyr-plain{font:14px/1.6 var(--font);color:var(--g);white-space:pre-wrap;user-select:text}
+.lyr-msg{color:#7a7e9c;font:13px/1.6 var(--font);padding-top:20px}
+.lyr-msg.small{font-size:11px}
+.lyr-foot{display:flex;align-items:center;gap:4px}
+.lyr-src{margin-left:auto;color:#7a7e9c;font-size:10px}
+/* Arabic lines: karaoke fill sweeps right to left */
+.lyr-line.on.words > span{background:none;color:#3f3;-webkit-background-clip:border-box;background-clip:border-box}
+.lyr-line.on.words .w{display:inline;color:transparent;-webkit-background-clip:text;background-clip:text;
+  background-image:linear-gradient(90deg,#fff 0,#fff var(--p,0%),#3f3 var(--p,0%),#3f3 100%)}
+.lyr-line.on.words .w.ar{background-image:linear-gradient(270deg,#fff 0,#fff var(--p,0%),#3f3 var(--p,0%),#3f3 100%)}
+
+/* ---------------- now playing window ---------------- */
+.np-tabs{display:flex;align-items:center;gap:4px}
+.np-tabs .lcdtag{margin-left:auto}
+.npbtn{display:flex;align-items:center;gap:5px;height:20px;padding:0 9px 0 6px;cursor:pointer;
+  font:bold 11px/18px var(--font);color:#e6e8f2;border:1px solid #000;
+  background:linear-gradient(#5b5e78,#34364a);box-shadow:inset 1px 1px 0 #8a8daa}
+.npbtn i{width:6px;height:6px;background:#2a4a2a;border:1px solid #000}
+.npbtn.on i{background:#3f3;box-shadow:0 0 3px #3f3}
+.npbtn:active{background:linear-gradient(#34364a,#5b5e78)}
+.np-art{flex:none;display:flex;justify-content:center;background:#000;border:1px solid #000;cursor:pointer;min-height:0}
+.np-art img{display:block;width:100%;height:100%;object-fit:contain;image-rendering:auto}
+.np-art.empty{background:#000 radial-gradient(circle,#1a1c2c 0 30%,#000 31%)}
+.np-info{flex:none;padding:2px 2px 0;min-width:0}
+.np-title{color:#fff;font:bold 15px/1.25 var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.np-artist{color:#9aa0c4;font:12px/1.3 var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* both: cover on top (about half the window), title, then lyrics below */
+.mode-both .np-art{height:44%}
+.mode-both .lyr-text{border-radius:6px;background:#0b0d12}
+/* cover only */
+.mode-cover .np-art{flex:1;height:auto}
+.mode-cover .lyr-text,.mode-cover .lyr-foot{display:none}
+/* lyrics only */
+.mode-lyrics .np-art{display:none}
+.mode-lyrics .np-title{font-size:13px}
+
+/* ---------------- in-app dialogs ---------------- */
+.dlg-back{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:#0006}
+.dlg{position:relative;width:340px;max-width:calc(100vw - 20px);
+  background:linear-gradient(180deg,var(--panel1),var(--panel2));border:1px solid var(--lo);
+  box-shadow:inset 1px 1px 0 var(--hi),0 8px 30px #000a}
+.dlg .title{height:18px}
+.dlg .tname{font-size:9px;line-height:18px}
+.dlg .tbtn{width:11px;height:11px;font-size:9px;line-height:9px}
+.dlg-body{padding:12px 14px 12px;display:flex;flex-direction:column;gap:9px}
+.dlg-msg{background:#000;color:var(--g);font:12px/1.5 var(--font);padding:9px 11px;border:1px solid #000;box-shadow:1px 1px 0 var(--hi)}
+.dlg-f{display:flex;flex-direction:column;gap:3px;color:#c8cad8;font:bold 11px var(--font)}
+.dlg-f input{width:100%}
+.dlg-f input.need{box-shadow:inset 0 0 0 1px #e33}
+.dlg-btns{display:flex;justify-content:flex-end;gap:6px;margin-top:2px}
+.dlg-btns .btn{min-width:76px;padding:4px 12px}
+.btn.danger{background:linear-gradient(#ff9a8a,#c0301c);color:#fff;text-shadow:0 1px 0 #6008}
+.btn.danger:active{background:linear-gradient(#c0301c,#ff9a8a)}
+.dlg.shake{animation:dlgshake .25s}
+@keyframes dlgshake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+/* edit dialog with cover picker */
+.dlg.wide{width:470px}
+.dlg-row{display:flex;gap:12px}
+.dlg-img{position:relative;width:140px;height:140px;flex:none;background:#000 radial-gradient(circle,#1a1c2c 0 30%,#000 31%);
+  border:1px solid #000;box-shadow:1px 1px 0 var(--hi);cursor:pointer;overflow:hidden}
+.dlg-img img{width:100%;height:100%;object-fit:cover;display:block}
+.dlg-imgtxt{position:absolute;left:0;right:0;bottom:0;padding:4px 6px;background:#000c;color:var(--g);
+  font:bold 11px var(--font);text-align:center;opacity:.85;transition:opacity .15s}
+.dlg-img:hover .dlg-imgtxt{opacity:1;color:#fff}
+.dlg-img:hover{box-shadow:inset 0 0 0 1px #3f3,1px 1px 0 var(--hi)}
+.dlg-fields{flex:1;display:flex;flex-direction:column;gap:9px;min-width:0}
+.dlg-note{color:#9aa0c4;font:10px/1.4 var(--font)}
+
+/* ---------------- artist window ---------------- */
+.art-name-link{cursor:pointer;color:inherit;text-decoration:none}
+.art-name-link:hover{color:#fff;text-decoration:underline}
+.artwin{width:460px;height:560px}
+.art-body{flex:1;display:block;overflow-y:auto;min-height:0;padding:0 0 10px;background:#0b0c14;border:1px solid #000;margin:4px;
+  scrollbar-color:#a8abbe #1a1b28;scrollbar-width:thin;font:12px/1.5 var(--font);color:#cfd3ea}
+.art-msg{padding:30px;text-align:center;color:#7a7e9c}
+.art-hero{position:relative;height:200px;background:#000 center 25%/cover no-repeat}
+.art-shade{position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,#0b0c14 100%)}
+.art-hname{position:absolute;left:14px;right:14px;bottom:8px;color:#fff;font:bold 30px/1.1 var(--font);
+  text-shadow:0 2px 8px #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.art-actions{display:flex;gap:5px;padding:8px 12px 4px;flex-wrap:wrap}
+.art-actions .btn.on{background:linear-gradient(#8f8,#2b2)}
+.art-genres{display:flex;flex-wrap:wrap;gap:4px;padding:4px 12px}
+.art-genres span{background:#000;color:var(--g);border:1px solid #1f3a1f;padding:0 7px;font-size:11px;border-radius:9px}
+.art-sec{padding:6px 12px 2px}
+.art-h{color:var(--g);font:bold 13px var(--font);margin-bottom:3px}
+.art-about{color:#cfd3ea;user-select:text}
+.art-about a,.art-facts a{color:#7fb2ff}
+.art-facts{margin:0;padding:6px 10px 6px 26px;background:#15172a;border:1px solid #000;border-radius:4px}
+.art-facts li{margin:2px 0}
+.art-links{display:flex;flex-wrap:wrap;gap:4px}
+.art-links .btn{text-decoration:none;font-weight:normal}
+.art-disc{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.art-rel{cursor:pointer;min-width:0}
+.art-rel img{width:100%;aspect-ratio:1;object-fit:cover;background:#000;border:1px solid #000;display:block}
+.art-rel:hover img{box-shadow:0 0 0 1px #3f3}
+.art-rel .t{color:#e6e8ff;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.art-rel .y{color:#7a7e9c;font-size:10px}
+.art-src{padding:10px 12px 0;color:#5a5e7c;font-size:10px}
+.dim{color:#7a7e9c}
+.art-rel .noimg{width:100%;aspect-ratio:1;background:#000;border:1px solid #000;color:#2a5a2a;display:flex;align-items:center;justify-content:center;font-size:28px}
+
+/* no karaoke fill: the playing line is simply bright green and bold */
+.lyr-line.on span,.lyr-line.on.words > span,.lyr-line.on.words .w,.lyr-line.on.words .w.ar{
+  color:#5f5;background:none;-webkit-background-clip:border-box;background-clip:border-box;filter:none;
+  text-shadow:0 0 6px #0f05}
+
+/* ---------------- desktop app: no page background, windows float on the real desktop ---------------- */
+html.desktop,html.desktop body{background:transparent!important}
+html.desktop .dlg-back{background:transparent}
+html.desktop .win{filter:drop-shadow(0 3px 6px #0007)}
+
+/* ---------------- lighter classic buttons + orange volume ---------------- */
+/* volume: warm orange bar, balance: green bar (no longer change colour with the value) */
+/* the bar's colour follows the level, like the classic player: green when quiet,
+   yellow, orange around the middle, red at full volume (balance: green centred, red at the sides) */
+.vol,.bal{background:linear-gradient(hsl(var(--h,40) 95% 62%) 0,hsl(var(--h,40) 92% 48%) 45%,hsl(var(--h,40) 90% 30%) 100%)}
+/* light, flat grey-lavender buttons with thin outlined icons */
+.tb,.pb{background:linear-gradient(#e2e3ee,#c3c5d6);border:1px solid #2a2c3c;
+  box-shadow:inset 1px 1px 0 #fff,inset -1px -1px 0 #9496ac}
+.tb:active,.pb:active{background:linear-gradient(#b9bbcd,#d6d7e4);box-shadow:inset 1px 1px 0 #8e90a6}
+.tb svg{fill:none;stroke:#2c2e44;stroke-width:1;stroke-linejoin:round;width:11px;height:9px}
+.mini svg{fill:none;stroke:#c8cad8;stroke-width:1.2}
+.mini span:active svg{fill:none;stroke:var(--g)}
+.led-btn,.plain-btn{color:#2c2e44;background:linear-gradient(#e2e3ee,#c3c5d6);border:1px solid #2a2c3c;
+  box-shadow:inset 1px 1px 0 #fff,inset -1px -1px 0 #9496ac}
+.led-btn:active,.plain-btn:active{background:linear-gradient(#b9bbcd,#d6d7e4)}
+.led-btn i{background:#3c4a3c}
+
+/* ---------------- EQ sliders: thin yellow line + classic slotted handle ---------------- */
+.vs{background:none}
+.vs::before{left:5.5px;width:3px;border:none;box-shadow:0 0 0 1px #0a0b12;
+  background:linear-gradient(90deg,hsl(var(--h,52) 95% 66%),hsl(var(--h,52) 90% 42%))}
+.vthumb{left:1.5px;width:11px;height:11px;border:1px solid #1c1e2c;
+  background:linear-gradient(#e6e8f2,#b4b7cb);box-shadow:inset 1px 1px 0 #fff,inset -1px -1px 0 #8a8da4}
+/* small dark box with a line through it in the middle of the handle */
+.vthumb::after{left:2.5px;top:2.5px;width:4px;height:4px;border:1px solid #3a3d52;
+  background:linear-gradient(#3a3d52,#3a3d52) center/100% 1px no-repeat}
+
+/* ---------------- volume + balance: thin coloured line, same style as the EQ ---------------- */
+.hslider.vol,.hslider.bal{background:none;border:none;box-shadow:none}
+.hslider.vol::before,.hslider.bal::before{left:2px;right:2px;top:5px;height:3px;box-shadow:0 0 0 1px #0a0b12;
+  background:linear-gradient(hsl(var(--h,40) 95% 66%),hsl(var(--h,40) 90% 42%))}
+
+/* ---------------- pixel-art rendering for the classic windows ---------------- */
+/* pixel-font labels (drawn as crisp squares by setPx / data-px) */
+.classic .pxs{display:inline-block;vertical-align:middle;shape-rendering:crispEdges}
+.classic .tname{line-height:0;display:flex;align-items:center}
+.marquee span:not(.pxfallback){top:3px;line-height:0}
+.lcdbox,.pltime,.plcur{line-height:0;display:flex;align-items:center;justify-content:flex-end}
+.pltime,.plcur{justify-content:center}
+.led-btn > span,.plain-btn,.pb{line-height:0}
+.plain-btn,.pb{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px}
+.lbl,.ind,.db{line-height:0}
+.db{display:flex;align-items:center;justify-content:flex-end;height:6px}
+.clutter i{line-height:0}
+.eqlbl{line-height:0}
+/* button icons: drawn 1:1 on the pixel grid, hard edges */
+.tb svg{width:12px;height:10px;shape-rendering:crispEdges}
+.mini svg{shape-rendering:crispEdges}
+.pb.two{padding-top:0;line-height:0;gap:2px}
+
+/* ---------------- EQ handles: blue-grey classic handle + dashed guide ticks ---------------- */
+/* slider 13 px wide so the track, handle and centre line all sit on whole pixels */
+.vs{width:13px}
+.vs::before{left:5px;width:3px}
+.vthumb{left:1px;width:11px;height:11px;border:1px solid #191b29;
+  background:linear-gradient(#bcc0d8,#8f94b2);
+  box-shadow:inset 1px 1px 0 #dde0f0,inset -1px -1px 0 #60647f}
+.vthumb::after{left:2px;top:2px;width:3px;height:3px;border:1px solid #2a2d42;
+  background:linear-gradient(#2a2d42,#2a2d42) 0 1px/100% 1px no-repeat}
+/* guides: short dashes between the handles instead of one long line */
+.eqguides{background:
+  repeating-linear-gradient(90deg,transparent 0 11px,#6e7192 11px 15px,transparent 15px 18px) 0 0/100% 1px no-repeat,
+  repeating-linear-gradient(90deg,transparent 0 11px,#8a8db0 11px 15px,transparent 15px 18px) 0 26px/100% 1px no-repeat,
+  repeating-linear-gradient(90deg,transparent 0 11px,#6e7192 11px 15px,transparent 15px 18px) 0 52px/100% 1px no-repeat}
+.eqguides[style*="left:12px"]{background:
+  linear-gradient(#6e7192,#6e7192) 4px 0/4px 1px no-repeat,
+  linear-gradient(#8a8db0,#8a8db0) 4px 26px/4px 1px no-repeat,
+  linear-gradient(#6e7192,#6e7192) 4px 52px/4px 1px no-repeat}
+
+/* ---------------- resizing ---------------- */
+.rz{position:absolute;z-index:5}
+.rz-r{top:0;right:-3px;width:7px;bottom:10px;cursor:ew-resize}
+.rz-b{left:0;bottom:-3px;height:7px;right:10px;cursor:ns-resize}
+.rz-rb{right:-3px;bottom:-3px;width:14px;height:14px;cursor:nwse-resize;
+  background:linear-gradient(135deg,transparent 0 55%,#8a8db0 55% 62%,transparent 62% 72%,#8a8db0 72% 79%,transparent 79%)}
+.plgrip{position:absolute;right:1px;bottom:1px;width:8px;height:8px;cursor:nwse-resize;z-index:5;
+  background:linear-gradient(135deg,transparent 0 50%,#9a9db8 50% 60%,transparent 60% 72%,#9a9db8 72% 82%,transparent 82%)}
+.pl-body .pllist{width:auto}
+.libsplit{width:5px;flex:none;cursor:ew-resize;margin:0 -2px;border-radius:2px}
+.libsplit:hover{background:#3f3a}
+.grid th{position:sticky;top:0;overflow:visible}
+.grid th .colrz{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;z-index:2}
+.grid th .colrz:hover{background:linear-gradient(90deg,transparent 3px,#3f3 3px 5px,transparent 5px)}
+.lib .body{min-width:0}
+.grid th .colrz{right:0;width:7px}
+.grid th .colrz:hover{background:linear-gradient(90deg,transparent 4px,#3f3 4px 6px,transparent 6px)}
+
+/* ---------------- resizing: contents shrink with the window instead of spilling out ---------------- */
+.lib{overflow:hidden}
+.lib-body,.libmain,.pane,.tablewrap,.viewhead,.libfoot,.searchbar,.tabs{min-width:0}
+.libmain{flex:1}
+.searchbar input{min-width:0;width:0}
+.viewhead{overflow:hidden;flex-wrap:nowrap}
+.viewhead > div{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.viewhead .btn{flex:none}
+.libfoot .btn{flex:none}
+.tabs{flex-wrap:wrap}
+.treecol{flex:none;min-width:0}
+
+/* ---------------- every scrollbar looks like the playlist's: light grey thumb on a dark track ---------------- */
+.tablewrap,.tree,.lyr-text,.art-body,.login,.pllist{scrollbar-color:#a8abbe #2a2b3d!important;scrollbar-width:auto!important}
+
+/* ---------------- logo button (your pixel logo, drawn 1:1 so it stays sharp) ---------------- */
+.badge,.badge.on{left:248px;top:72px;width:22px;height:22px;border:none;border-radius:0;
+  background:url(icons/badge.png) 0 0/22px 22px no-repeat;image-rendering:pixelated;filter:drop-shadow(1px 1px 0 #0008)}
+.badge::after{content:none}
+.badge:hover{filter:brightness(1.25) drop-shadow(1px 1px 0 #0008)}
+.badge:active{transform:translate(1px,1px);filter:brightness(.9)}
+
+/* long dialog messages (About) scroll inside the dialog */
+.dlg-msg{max-height:62vh;overflow-y:auto;scrollbar-color:#a8abbe #2a2b3d;user-select:text}
+.dlg.wide{width:520px}
+
+/* ---------------- MilkDrop window ---------------- */
+.mdwin{width:560px;height:440px}
+.md-body{flex:1;display:flex;flex-direction:column;gap:4px;min-height:0;min-width:0;padding:4px}
+.md-stage{position:relative;flex:1;min-height:0;background:#000;border:1px solid #000;overflow:hidden;cursor:pointer}
+#mdcv{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:auto}
+.md-msg{position:absolute;inset:auto 0 0 0;padding:6px 10px;color:var(--g);font:12px var(--font);text-shadow:0 1px 2px #000;pointer-events:none}
+.md-msg:empty{display:none}
+.md-bar{display:flex;align-items:center;gap:4px;min-width:0}
+.md-name{flex:1;min-width:0;color:#9aa0c4;font:11px var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mdwin.md-full{border:none;box-shadow:none}
+.mdwin.md-full .title,.mdwin.md-full .md-bar,.mdwin.md-full .rz{display:none}
+.mdwin.md-full .md-body{padding:0}
+.mdwin.md-full .md-stage{border:none}
+
+/* ---------------- Up Next window (in the Equalizer's place) ---------------- */
+.upn-body{padding:3px 5px 4px;height:102px;display:flex;flex-direction:column;gap:3px}
+.upn-list{flex:1;min-height:0;overflow-y:auto;background:#000;border:1px solid #000;box-shadow:1px 1px 0 var(--hi);
+  font:7px/11px var(--font);color:var(--g);outline:none;scrollbar-color:#a8abbe #2a2b3d}
+.upn-row{display:flex;align-items:center;gap:3px;padding:0 3px;white-space:nowrap;cursor:default}
+.upn-row img,.upn-noimg{width:9px;height:9px;flex:none;object-fit:cover;background:#111;color:#2a5a2a;font-size:7px;line-height:9px;text-align:center}
+.upn-row .t{flex:1;overflow:hidden;text-overflow:ellipsis}
+.upn-row .d{padding-left:4px}
+.upn-row:first-child{color:#fff}
+.upn-row.sel{background:#0000c6}
+.upn-empty{color:#00a800;text-align:center;padding:14px 6px;line-height:11px}
+.upn-foot{display:flex;align-items:center;gap:3px;height:13px}
+.upn-foot .pb{width:auto;height:11px;padding:0 4px;line-height:0}
+.upn-count{margin-left:auto;color:#8a8db0;line-height:0}
+
+/* ---------------- scrollbars: rectangular, classic look, everywhere ---------------- */
+/* the standard scrollbar-color rule would win over the custom drawing below, so turn it off */
+*,.tablewrap,.tree,.lyr-text,.art-body,.login,.pllist,.upn-list,.dlg-msg{scrollbar-color:auto!important;scrollbar-width:auto!important}
+::-webkit-scrollbar{width:12px;height:12px;background:#15162a}
+::-webkit-scrollbar-track{background:#15162a;border-left:1px solid #000;box-shadow:inset 1px 0 0 #0a0b14}
+::-webkit-scrollbar-track:horizontal{border-left:none;border-top:1px solid #000;box-shadow:inset 0 1px 0 #0a0b14}
+::-webkit-scrollbar-thumb{border-radius:0;border:1px solid #191b29;
+  background:linear-gradient(90deg,#d6d8e6,#a4a7bd);box-shadow:inset 1px 1px 0 #f4f5fb,inset -1px -1px 0 #6e7190}
+::-webkit-scrollbar-thumb:horizontal{background:linear-gradient(#d6d8e6,#a4a7bd)}
+::-webkit-scrollbar-thumb:hover{background:linear-gradient(90deg,#e6e8f2,#b6b9cd)}
+::-webkit-scrollbar-thumb:active{background:linear-gradient(90deg,#a4a7bd,#d6d8e6)}
+::-webkit-scrollbar-button{display:none;width:0;height:0}
+::-webkit-scrollbar-corner{background:#15162a}
+/* inside the zoomed classic windows (playlist, Up Next, Queue) one drawn pixel is bigger,
+   so the bar is drawn thinner to look the same */
+.classic ::-webkit-scrollbar{width:7px;height:7px}
+
+/* Queue window: list has its own height so the window can be resized with the corner grip */
+#w-qu .upn-body{height:auto}
+#qu-list{flex:none;height:79px}
+
+/* rolled-up windows: only the title bar, whatever size the window was given */
+.win.shaded .body,.win.shaded .rz,.win.shaded .plgrip{display:none!important}
+.win.lib.shaded{height:auto!important}
+
+/* ---------------- O A I D V buttons ---------------- */
+.clutter i{cursor:pointer;color:#8d90a8}
+.clutter i:hover{color:#e6e8f2}
+.clutter i:active{color:#fff;transform:translateY(.5px)}
+.clutter i.on{color:#3f3}
+.dlg-cover{display:block;width:140px;height:140px;object-fit:cover;margin:0 auto 4px;border:1px solid #000;box-shadow:1px 1px 0 var(--hi)}
+.dlg-msg{white-space:pre-wrap}
+.dlg-cover + .dlg-msg{font-family:var(--mono)} /* song info lines up in columns */
+
+/* ---------------- drag to reorder ---------------- */
+.drop-line{position:fixed;height:2px;background:#3f3;box-shadow:0 0 4px #3f3;pointer-events:none;z-index:3}
+.dragging,.dragging *{cursor:grabbing!important;user-select:none}
+.tablewrap{position:relative}
+
+/* playlist refresh line in the sidebar */
+.tree .node[data-id="plrefresh"]{color:#7a7e9c;font-size:11px}
+.tree .node[data-id="plrefresh"]:hover{color:#3f3}
