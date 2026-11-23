@@ -1,0 +1,31 @@
+Unofficial Mac and Linux builds of Winampify (the classic-style desktop player for Spotify Premium). Built automatically from this fork by GitHub Actions. **Test builds:** they start, but haven't been tried on a real Mac or Linux PC yet.
+
+## Downloads
+
+| System | File |
+|---|---|
+| Mac with Apple Silicon (M1 and later) | `Winampify-<version>-arm64.dmg` |
+| Mac with Intel | `Winampify-<version>-x64.dmg` |
+| Ubuntu / Debian / Mint | `winampify_<version>_amd64.deb` |
+| Other Linux (x64) | `Winampify-<version>-x86_64.AppImage` |
+
+## Mac
+
+1. Open the `.dmg` and drag Winampify to Applications.
+2. The app isn't signed by Apple, so macOS calls it "damaged". Run this once in Terminal:
+   `xattr -cr /Applications/Winampify.app`
+3. MilkDrop asks for Screen Recording permission, which it needs to hear the music.
+
+**Spotify playback on Mac needs the castLabs VMP signature.** If the build log said "VMP signing SKIPPED", this Mac build opens but won't play music.
+
+## Linux
+
+- `.deb`: `sudo apt install ./winampify_<version>_amd64.deb`, then open Winampify from your app menu.
+- AppImage: `chmod +x Winampify-*.AppImage` and run it. On Ubuntu 24.04+ it may only start with `--no-sandbox`.
+- On Wayland desktops it runs through XWayland, because the see-through windows need X11.
+
+## Not on Mac / Linux (yet)
+
+- Balance slider (uses a Windows-only helper)
+- Automatic updates (they install the Windows MSI). Download new builds here.
+- Taskbar preview buttons. Media keys and the system's now-playing controls still work.
