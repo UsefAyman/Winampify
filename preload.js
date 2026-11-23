@@ -25,6 +25,11 @@ contextBridge.exposeInMainWorld('desktop', {
   setOnTop: on => ipcRenderer.send('on-top', !!on),
   // the buttons under the taskbar preview (prev / play / pause / stop / next)
   onThumbCmd: cb => ipcRenderer.on('thumb-cmd', (_e, cmd) => cb(cmd)),
+  // updates from GitHub releases: told when one is available, installed only when asked
+  appVersion: () => ipcRenderer.invoke('app-version'),
+  onUpdate: cb => ipcRenderer.on('update', (_e, m) => cb(m)),
+  checkUpdate: () => ipcRenderer.send('update-check'),
+  installUpdate: () => ipcRenderer.send('update-install'),
 });
 
 if (!OURS) {

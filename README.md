@@ -16,6 +16,7 @@ Get the latest **`Winampify-<version>.msi`** from the [Releases page](../../rele
 - Installs for your Windows user only (no administrator rights) into `%LOCALAPPDATA%\Programs\Winampify`, with Start menu and Desktop shortcuts.
 - The MSI isn't code-signed, so SmartScreen may say "Unknown publisher" the first time: **More info > Run anyway**.
 - A newer MSI upgrades the installed copy. Uninstalling keeps your login and settings (`%APPDATA%\winampify`).
+- **Updates:** from version 1.0.327 on, Winampify checks this repo's Releases twice a day and **asks before installing** anything. When you press **Install**, it downloads the new MSI, checks its SHA-256 fingerprint against the one published with the release, then closes, updates and starts again. **Settings > Check for updates** checks right away.
 
 ## One-time setup (about 3 minutes)
 
@@ -89,6 +90,7 @@ powershell -ExecutionPolicy Bypass -File installer\build-msi.ps1   # dist\Winamp
 ```
 
 - `npm start` runs the app straight from the source folder.
+- `powershell -ExecutionPolicy Bypass -File publish.ps1 -NotesFile notes.md` publishes a release in one step. It raises the version, builds the exe and MSI, writes the MSI's `.sha256` fingerprint, pushes, and creates the GitHub release that installed copies update from.
 - Set `WINAMPIFY_DEBUG=1` to open remote debugging on port 9229.
 
 **Project layout**

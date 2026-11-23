@@ -9,11 +9,10 @@ $out = Join-Path $root 'dist'
 if (-not (Test-Path (Join-Path $src 'Winampify.exe'))) { throw "Build the app first: node build.js" }
 New-Item -ItemType Directory -Force $obj, $out | Out-Null
 
-# version: package.json major.minor + a build number that grows every day (MSI needs it for upgrades)
+# version: the one in package.json, so the app, the MSI and the GitHub release all agree
+# (publish.ps1 raises it for every release; the MSI needs a higher number to upgrade)
 $pkg = Get-Content (Join-Path $root 'package.json') -Raw | ConvertFrom-Json
-$mm = ($pkg.version -split '\.')[0..1] -join '.'
-$build = [int]((Get-Date) - (Get-Date '2026-01-01')).TotalDays
-$version = "$mm.$build"
+$version = $pkg.version
 
 # 1) list every file of the app
 & (Join-Path $wix 'heat.exe') dir $src -nologo -cg AppFiles -dr INSTALLFOLDER -srd -gg -sfrag -sreg -var var.SourceDir -out (Join-Path $obj 'files.wxs')

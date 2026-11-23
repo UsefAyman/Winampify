@@ -22,6 +22,29 @@ const TYPES = {
 // only the app's own files are served (never node_modules or anything else in the folder)
 const PUBLIC = new Set(['index.html', 'app.js', 'style.css', 'manifest.json']);
 const isPublic = rel => PUBLIC.has(rel) || /^icons\/[\w.-]+\.(png|ico|webp)$/.test(rel) || /^vendor\/[\w.-]+\.js$/.test(rel);
+// where updates come from (GitHub releases of this repository, nothing else)
+const REPO = 'mixooo/Winampify';
+const fromRepo = u => typeof u === 'string' && u.startsWith(`https://github.com/${REPO}/releases/download/`);
+const isNewer = (a, b) => {
+  const p = v => String(v).split('.').map(n => parseInt(n, 10) || 0);
+  const x = p(a), y = p(b);
+  for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+  return false;
+};
+const ghText = async url => { const r = await fetch(url, { headers: { 'User-Agent': 'Winampify-Updater', Accept: 'application/vnd.github+json' } }); if (!r.ok) throw new Error('GitHub answered ' + r.status); return r.text(); };
+const ghJson = async url => JSON.parse(await ghText(url));
+// where the MSI installs Winampify (per-user), started again after an update
+const installedExe = () => path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Winampify', 'Winampify.exe');
+// Links clicked in the app open in your browser, but only web and email links: a link from
+// public data (artist pages come from MusicBrainz / Wikipedia, which anyone can edit) must never
+// be able to open a file or start a program on this PC (file:, ms-*:, search-ms: and the like).
+function openLink(url) {
+  try {
+    const u = new URL(url);
+    if (u.protocol === 'https:' || u.protocol === 'http:' || u.protocol === 'mailto:') return shell.openExternal(u.href);
+  } catch {}
+  console.log('[security] blocked a link that is not a web address:', String(url).slice(0, 80));
+}
 
 function startServer() {
   return new Promise((resolve, reject) => {
@@ -220,11 +243,11 @@ app.whenReady().then(async () => {
   });
 
   // links that open in a new tab (Wikipedia, artist links, Spotify dashboard) go to the real browser
-  win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
+  win.webContents.setWindowOpenHandler(({ url }) => { openLink(url); return { action: 'deny' }; });
   // stay on Winampify or Spotify's login page; anything else opens in the browser
   win.webContents.on('will-navigate', (e, url) => {
     if (url.startsWith(ORIGIN) || url.startsWith('https://accounts.spotify.com/') || url.startsWith('https://challenge.spotify.com/')) return;
-    e.preventDefault(); shell.openExternal(url);
+    e.preventDefault(); openLink(url);
   });
 
   // The layer's real shape: just the Winampify windows (plus open menus / dialogs), so
@@ -272,7 +295,7 @@ app.whenReady().then(async () => {
     loginWin.webContents.on('will-redirect', finish);
     loginWin.webContents.on('will-navigate', finish);
     // links inside the login page that open new windows (help, sign up) go to the real browser
-    loginWin.webContents.setWindowOpenHandler(({ url: u }) => { shell.openExternal(u); return { action: 'deny' }; });
+    loginWin.webContents.setWindowOpenHandler(({ url: u }) => { openLink(u); return { action: 'deny' }; });
     loginWin.on('closed', () => { loginWin = null; });
     loginWin.loadURL(url);
   });
@@ -299,6 +322,74 @@ app.whenReady().then(async () => {
   app.on('before-quit', () => { try { balancer?.kill(); } catch {} });
 
   ipcMain.on('app-cmd', (_e, cmd) => { if (cmd === 'minimize') host.minimize(); else if (cmd === 'quit') app.quit(); });
+
+  // ---------------------------------------------------------------- updates
+  // Twice a day Winampify asks GitHub whether a newer release exists. If so, the page asks you
+  // first; only when you press Install is the new MSI downloaded, checked against the SHA-256
+  // fingerprint published with the release, and installed (Winampify closes, updates, restarts).
+  const UPD = { latest: null, busy: false };
+  const say = m => { if (win && !win.isDestroyed()) win.webContents.send('update', m); };
+  ipcMain.handle('app-version', () => app.getVersion());
+  ipcMain.on('update-check', () => checkForUpdate(true));
+  ipcMain.on('update-install', () => installUpdate());
+  async function checkForUpdate(manual = false) {
+    if (UPD.busy) return;
+    try {
+      const rel = await ghJson(`https://api.github.com/repos/${REPO}/releases/latest`);
+      const version = String(rel.tag_name || '').replace(/^v/, '');
+      const msi = (rel.assets || []).find(a => /\.msi$/i.test(a.name));
+      const sum = (rel.assets || []).find(a => /\.msi\.sha256$/i.test(a.name));
+      if (!isNewer(version, app.getVersion()) || !msi || !sum || !fromRepo(msi.browser_download_url) || !fromRepo(sum.browser_download_url)) {
+        if (manual) say({ state: 'none', version: app.getVersion() });
+        return;
+      }
+      UPD.latest = { version, name: msi.name, size: msi.size, msiUrl: msi.browser_download_url, sumUrl: sum.browser_download_url };
+      say({ state: 'available', manual, version, current: app.getVersion(), sizeMB: Math.round(msi.size / 1048576), notes: String(rel.body || '') });
+    } catch (e) {
+      console.log('[update] check failed:', e.message);
+      if (manual) say({ state: 'error', message: e.message });
+    }
+  }
+  async function installUpdate() {
+    const u = UPD.latest; if (!u || UPD.busy) return;
+    UPD.busy = true;
+    try {
+      const dir = path.join(app.getPath('temp'), 'Winampify-update');
+      fs.mkdirSync(dir, { recursive: true });
+      const file = path.join(dir, u.name.replace(/[^\w.-]/g, '_'));
+      // the fingerprint published next to the MSI
+      const expect = (await ghText(u.sumUrl)).trim().split(/\s+/)[0].toLowerCase();
+      if (!/^[0-9a-f]{64}$/.test(expect)) throw new Error('the release has no valid fingerprint');
+      // download, hashing as it arrives
+      const r = await fetch(u.msiUrl, { headers: { 'User-Agent': 'Winampify-Updater' } });
+      if (!r.ok || !r.body) throw new Error('download failed (' + r.status + ')');
+      const hash = require('crypto').createHash('sha256'), out = fs.createWriteStream(file);
+      const total = +r.headers.get('content-length') || u.size || 0;
+      let got = 0, lastPct = -1;
+      for await (const chunk of r.body) {
+        hash.update(chunk); got += chunk.length;
+        if (!out.write(chunk)) await new Promise(res => out.once('drain', res));
+        const pct = total ? Math.floor(got * 100 / total) : 0;
+        if (pct !== lastPct && pct % 5 === 0) { lastPct = pct; say({ state: 'downloading', pct }); }
+      }
+      await new Promise((res, rej) => out.end(err => (err ? rej(err) : res())));
+      if (hash.digest('hex') !== expect) { fs.rmSync(file, { force: true }); throw new Error('the download did not match its fingerprint, so it was not installed'); }
+      say({ state: 'installing', version: u.version });
+      // after Winampify has closed: install quietly (progress bar only), then start the new version
+      const exe = installedExe();
+      const cmd = `ping -n 4 127.0.0.1 >nul & msiexec /i "${file}" /passive /norestart /l*v "${path.join(dir, 'install.log')}" & start "" "${exe}"`;
+      spawn('cmd.exe', ['/d', '/s', '/c', `"${cmd}"`], { detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true }).unref();
+      setTimeout(() => app.quit(), 800);
+    } catch (e) {
+      UPD.busy = false;
+      console.log('[update] install failed:', e.message);
+      say({ state: 'error', message: e.message });
+    }
+  }
+  if (app.isPackaged) {
+    setTimeout(() => checkForUpdate(false), 20000);
+    setInterval(() => checkForUpdate(false), 12 * 3600000);
+  }
 
   // The page reports where the player is (main + EQ + playlist). Keep the main window under
   // it and refresh the picture Alt-Tab shows. While a window is being dragged the picture is

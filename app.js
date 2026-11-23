@@ -1583,6 +1583,8 @@ function mainMenu(e) {
       { label: 'Reset everything above', fn: () => { resetWindows(); resetColumns(); LS.del('treeW'); $('.treecol').style.width = ''; } },
       '-',
       { label: 'Clear saved playlists and songs (cache)', fn: clearCache },
+      '-',
+      { label: 'Check for updates' + (APP_VERSION ? ` (you have ${APP_VERSION})` : ''), disabled: !window.desktop?.checkUpdate, fn: () => { showMsg('CHECKING FOR UPDATES...', 1500); window.desktop.checkUpdate(); } },
     ] },
     '-',
     ['Time: elapsed / remaining', () => { S.remaining = !S.remaining; LS.set('remaining', S.remaining); }],
@@ -3381,6 +3383,32 @@ function setupOsMedia() {
   for (const [a, fn] of Object.entries(h)) { try { ms.setActionHandler(a, d => { S.activeAt = Date.now(); OSM.posAt = 0; fn(d); }); } catch {} }
 }
 setupOsMedia();
+
+/* ------------------------------------------------------------------ updates
+   Winampify checks GitHub for a newer release twice a day and asks before installing it. "Later"
+   hides that version for a day; Settings > Check for updates asks right away. */
+let APP_VERSION = '';
+window.desktop?.appVersion?.().then(v => { APP_VERSION = v || ''; });
+const plainNotes = md => String(md || '')
+  .replace(/\r/g, '').replace(/^#+\s*/gm, '').replace(/\*\*|__|`/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+  .split('\n').map(l => l.trim()).filter(Boolean).slice(0, 10).join('\n');
+window.desktop?.onUpdate?.(async m => {
+  if (m.state === 'available') {
+    const later = LS.get('updLater');
+    if (!m.manual && later?.version === m.version && Date.now() - later.at < DAY) return;
+    const notes = plainNotes(m.notes);
+    const yes = await winConfirm(
+      `Winampify ${m.version} is available (you have ${m.current}).\n\n` +
+      (notes ? `What's new:\n${notes}\n\n` : '') +
+      `Install it now? Winampify downloads it (${m.sizeMB} MB), checks it, closes, updates and starts again.`,
+      { title: 'UPDATE AVAILABLE', ok: 'Install', cancel: 'Later', wide: true });
+    if (yes) { showMsg('DOWNLOADING UPDATE...', 3000); window.desktop.installUpdate(); }
+    else LS.set('updLater', { version: m.version, at: Date.now() });
+  } else if (m.state === 'downloading') showMsg(`DOWNLOADING UPDATE ${m.pct}%`, 3000);
+  else if (m.state === 'installing') showMsg(`INSTALLING WINAMPIFY ${m.version} - BACK IN A FEW SECONDS`, 8000);
+  else if (m.state === 'none') showMsg(`WINAMPIFY ${m.version} IS THE LATEST VERSION`, 2500);
+  else if (m.state === 'error') winAlert('The update could not be installed:\n' + m.message + '\n\nYou can also download it from github.com/mixooo/Winampify/releases', { title: 'UPDATE' });
+});
 
 /* buttons under the taskbar preview (point at Winampify on the taskbar) */
 window.desktop?.onThumbCmd?.(cmd => {
