@@ -3391,7 +3391,7 @@ let APP_VERSION = '';
 window.desktop?.appVersion?.().then(v => { APP_VERSION = v || ''; });
 const plainNotes = md => String(md || '')
   .replace(/\r/g, '').replace(/^#+\s*/gm, '').replace(/\*\*|__|`/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-  .split('\n').map(l => l.trim()).filter(Boolean).slice(0, 10).join('\n');
+  .split('\n').map(l => l.trim()).filter(l => l && !/^what'?s new:?$/i.test(l)).slice(0, 10).join('\n');
 window.desktop?.onUpdate?.(async m => {
   if (m.state === 'available') {
     const later = LS.get('updLater');
