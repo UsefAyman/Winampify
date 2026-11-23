@@ -1,6 +1,6 @@
 # Winampify
 
-**A classic-style desktop music player for Spotify Premium on Windows.**
+**A classic-style desktop music player for Spotify Premium on Windows, now also on Mac and Linux (test builds).**
 Skinned, dockable windows, a real playlist editor, MilkDrop-style visuals, and a design built around one goal: use as few Spotify requests as possible, so you don't hit Spotify's cooldowns.
 
 ![Winampify: the player, Up Next, playlist editor, library and queue windows docked together](docs/screenshots/overview.png)
@@ -11,12 +11,58 @@ Skinned, dockable windows, a real playlist editor, MilkDrop-style visuals, and a
 
 ## Download
 
-Get the latest **`Winampify-<version>.msi`** from the [Releases page](../../releases/latest) and run it.
+Everything is on the [Releases page](../../releases/latest).
+
+| System | File |
+|---|---|
+| Windows | `Winampify-<version>.msi` |
+| Mac with Apple Silicon (M1 or newer) | `Winampify-<version>-arm64.dmg` |
+| Mac with Intel | `Winampify-<version>-x64.dmg` |
+| Ubuntu / Debian / Mint | `winampify_<version>_amd64.deb` |
+| Other Linux (x64) | `Winampify-<version>-x86_64.AppImage` |
+
+### Windows
+
+Download the `.msi` and run it.
 
 - Installs for your Windows user only (no administrator rights) into `%LOCALAPPDATA%\Programs\Winampify`, with Start menu and Desktop shortcuts.
 - The MSI isn't code-signed, so SmartScreen may say "Unknown publisher" the first time: **More info > Run anyway**.
 - A newer MSI upgrades the installed copy. Uninstalling keeps your login and settings (`%APPDATA%\winampify`).
 - **Updates:** from version 1.0.327 on, Winampify checks this repo's Releases twice a day and **asks before installing** anything. When you press **Install**, it downloads the new MSI, checks its SHA-256 fingerprint against the one published with the release, then closes, updates and starts again. **Settings > Check for updates** checks right away.
+
+### Mac (test build)
+
+1. Open the `.dmg` and drag **Winampify** to **Applications**.
+2. The app isn't signed by Apple yet, so run this once in Terminal:
+   ```
+   xattr -cr /Applications/Winampify.app
+   ```
+3. MilkDrop asks for **Screen Recording** permission, which it needs to hear the music.
+
+> [!WARNING]
+> Spotify doesn't play in the Mac build yet. It still needs the castLabs VMP signature.
+
+### Linux (test build)
+
+- **.deb** (Ubuntu, Debian, Mint): install it with
+  ```
+  sudo apt install ./winampify_<version>_amd64.deb
+  ```
+  then open Winampify from your app menu.
+- **AppImage** (other distributions): make it executable and run it. On Ubuntu 24.04 or newer it may need `--no-sandbox`:
+  ```
+  chmod +x Winampify-<version>-x86_64.AppImage
+  ./Winampify-<version>-x86_64.AppImage --no-sandbox
+  ```
+- On Wayland desktops Winampify runs through XWayland, because its see-through windows need X11.
+
+### Not on Mac and Linux yet
+
+- Balance
+- Automatic updates (download new versions from the Releases page)
+- Taskbar preview buttons
+
+Media keys and the system's now-playing controls work on all three.
 
 ## One-time setup (about 3 minutes)
 
@@ -112,6 +158,13 @@ powershell -ExecutionPolicy Bypass -File installer\build-msi.ps1   # dist\Winamp
 - `powershell -ExecutionPolicy Bypass -File publish.ps1 -NotesFile notes.md` publishes a release in one step. It raises the version, builds the exe and MSI, writes the MSI's `.sha256` fingerprint, pushes, and creates the GitHub release that installed copies update from.
 - Set `WINAMPIFY_DEBUG=1` to open remote debugging on port 9229.
 
+**Mac and Linux:** GitHub Actions builds them (Actions > **Build Mac & Linux** > Run workflow). Tick **Also publish a GitHub Release** to add the `.dmg`, `.deb` and AppImage files to this version's release. For Spotify to play on Mac, add the castLabs EVS account as the repository secrets `EVS_ACCOUNT_NAME` and `EVS_PASSWD`. On a Mac or Linux machine you can also build locally:
+
+```bash
+npm ci
+npx electron-builder@26.18.0 --mac     # or --linux; files land in dist/
+```
+
 **Project layout**
 
 | Path | What it is |
@@ -122,6 +175,8 @@ powershell -ExecutionPolicy Bypass -File installer\build-msi.ps1   # dist\Winamp
 | `index.html`, `style.css` | Windows and theme |
 | `helpers/balance.cs` | The small Windows helper for left/right balance |
 | `installer/` | WiX installer definition and build script |
+| `electron-builder.yml`, `scripts/vmp-sign.js` | Mac and Linux packaging, and castLabs signing for Mac |
+| `.github/workflows/build-mac-linux.yml` | The GitHub Actions build for Mac and Linux |
 | `icons/` | App icons and the scripts that make them |
 
 ## Credits
