@@ -19,7 +19,9 @@ if ($LASTEXITCODE -eq 0) {
 $version = $current.Trim()
 "== Publishing Winampify $version"
 
-# 2) build
+# 2) build (a copy still running from release\ would lock its folder)
+Get-Process | Where-Object { $_.Path -like (Join-Path $PSScriptRoot 'release\*') } | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep 3
 node build.js
 if ($LASTEXITCODE) { throw 'node build.js failed' }
 powershell -NoProfile -ExecutionPolicy Bypass -File installer\build-msi.ps1
