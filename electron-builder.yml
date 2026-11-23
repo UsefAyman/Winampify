@@ -9,7 +9,7 @@ copyright: ""
 # castLabs Electron (with Widevine, so Spotify can play), same version as package.json
 electronVersion: 45.2.1+wvcus
 electronDownload:
-  mirror: https://github.com/castlabs/electron-releases/releases/download/v
+  mirror: https://github.com/castlabs/electron-releases/releases/download/
 
 # plain folder like the Windows build (resources/app), no native modules to rebuild
 asar: false
