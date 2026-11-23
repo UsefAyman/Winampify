@@ -56,6 +56,25 @@ jobs:
         env:
           PYTHON: python
 
+      - name: Smoke test (starts and stays up for 25 s)
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            BIN="dist/mac-arm64/Winampify.app/Contents/MacOS/Winampify"; RUN=""
+          else
+            BIN="dist/linux-unpacked/winampify"; RUN="xvfb-run -a"
+            ARGS="--no-sandbox --ozone-platform=x11"
+          fi
+          $RUN "$BIN" $ARGS > run.log 2>&1 &
+          sleep 25
+          if pgrep -f "$BIN" > /dev/null; then echo "Winampify is running"; ALIVE=1; else echo "::error::Winampify exited early"; ALIVE=0; fi
+          echo "----- app output"; cat run.log
+          for f in ~/.config/Winampify/winampify.log ~/.config/winampify/winampify.log "$HOME/Library/Application Support/Winampify/winampify.log" "$HOME/Library/Application Support/winampify/winampify.log"; do
+            [ -f "$f" ] && { echo "----- page log: $f"; cat "$f"; }
+          done
+          pkill -f "$BIN" || true
+          [ "$ALIVE" = 1 ]
+
       - name: Note about Mac playback
         if: runner.os == 'macOS' && env.EVS_ACCOUNT_NAME == ''
         run: echo "::warning::No EVS_ACCOUNT_NAME secret, so the Mac build is not VMP-signed and Spotify will not play in it."
