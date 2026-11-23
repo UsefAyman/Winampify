@@ -1,0 +1,70 @@
+# Mac and Linux packages (the Windows exe + MSI still come from build.js and installer\build-msi.ps1).
+#   npx electron-builder@26.18.0 --mac   -> dist/Winampify-<version>-arm64.dmg and -x64.dmg (run on a Mac)
+#   npx electron-builder@26.18.0 --linux -> dist/Winampify-<version>.AppImage and winampify_<version>_amd64.deb
+# GitHub Actions does both: .github/workflows/build-mac-linux.yml
+appId: com.winampify.app
+productName: Winampify
+copyright: ""
+
+# castLabs Electron (with Widevine, so Spotify can play), same version as package.json
+electronVersion: 45.2.1+wvcus
+electronDownload:
+  mirror: https://github.com/castlabs/electron-releases/releases/download/v
+
+# plain folder like the Windows build (resources/app), no native modules to rebuild
+asar: false
+npmRebuild: false
+directories:
+  output: dist
+  buildResources: icons
+files:
+  - main.js
+  - preload.js
+  - index.html
+  - app.js
+  - style.css
+  - manifest.json
+  - package.json
+  - icons/*.png
+  - vendor/**
+  - "!node_modules/**"
+
+# macOS: castLabs VMP signature, which has to come before the Mac code signature
+afterPack: scripts/vmp-sign.js
+
+mac:
+  category: public.app-category.music
+  icon: icons/icon-512.png
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  # no Apple Developer ID: ad-hoc signature (needed for Apple Silicon to run it at all)
+  identity: "-"
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  extendInfo:
+    NSAudioCaptureUsageDescription: Winampify's MilkDrop visualizer listens to the music your Mac is playing.
+    NSScreenCaptureUsageDescription: Winampify's MilkDrop visualizer captures your Mac's sound (no picture is kept).
+
+dmg:
+  artifactName: Winampify-${version}-${arch}.dmg
+
+linux:
+  icon: icons/icon-512.png
+  category: AudioVideo
+  executableName: winampify
+  # the see-through, click-through windows need X11 (XWayland on Wayland desktops)
+  executableArgs: ["--ozone-platform=x11"]
+  synopsis: Classic-style desktop player for your Spotify account
+  maintainer: Winampify
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+
+appImage:
+  artifactName: Winampify-${version}-x86_64.AppImage
+
+deb:
+  packageCategory: sound

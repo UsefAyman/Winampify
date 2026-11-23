@@ -14,7 +14,10 @@ const path = require('path');
 const ROOT = __dirname;
 const PORT = 8888;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
-const ICON = path.join(ROOT, 'icons', 'winampify.ico');
+const IS_WIN = process.platform === 'win32';
+const IS_MAC = process.platform === 'darwin';
+const IS_LINUX = process.platform === 'linux';
+const ICON = path.join(ROOT, 'icons', IS_WIN ? 'winampify.ico' : 'icon-512.png');
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json', '.png': 'image/png', '.ico': 'image/x-icon', '.webp': 'image/webp',
@@ -81,16 +84,28 @@ if (process.env.WINAMPIFY_DEBUG) app.commandLine.appendSwitch('remote-debugging-
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('disable-background-timer-throttling');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+// macOS 13+: let MilkDrop / the visualizer hear what the Mac is playing (asks for Screen Recording permission)
+if (IS_MAC) app.commandLine.appendSwitch('enable-features', 'MacLoopbackAudioForScreenShare,MacSckSystemAudioLoopbackOverride');
+
+// Linux: the see-through, click-through layer needs X11 window shapes. Under Wayland,
+// start again through XWayland (the .deb launcher already passes this switch).
+if (IS_LINUX && !app.commandLine.hasSwitch('ozone-platform') && process.env.XDG_SESSION_TYPE === 'wayland') {
+  app.relaunch({ execPath: process.env.APPIMAGE || process.execPath, args: process.argv.slice(1).concat('--ozone-platform=x11') });
+  app.exit(0);
+}
 
 let win = null;   // the see-through layer that draws every Winampify window
 let host = null;  // small player-sized window: the one the taskbar and Alt-Tab show
-app.setAppUserModelId('Winampify');
+if (IS_WIN) app.setAppUserModelId('Winampify');
 if (!app.requestSingleInstanceLock()) app.quit();
 app.on('second-instance', () => { if (host) { if (host.isMinimized()) host.restore(); host.show(); } if (win) win.focus(); });
 app.on('window-all-closed', () => app.quit());
+// macOS: clicking the Dock icon brings the player back
+app.on('activate', () => { if (host && host.isMinimized()) host.restore(); if (win && !win.isDestroyed()) { win.show(); win.focus(); } });
 
 app.whenReady().then(async () => {
-  Menu.setApplicationMenu(null);
+  // macOS keeps a small menu so Cmd+Q and copy / paste (Spotify login) work; elsewhere none
+  Menu.setApplicationMenu(IS_MAC ? Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }]) : null);
   // Spotify says how long to wait in a "Retry-After" header, but browsers hide it from the
   // page unless the response allows it. Allow it, so Winampify waits exactly as long as asked.
   // (Electron keeps only one such hook, so it also lets the page read Deezer's public
@@ -157,7 +172,7 @@ app.whenReady().then(async () => {
     '<!DOCTYPE html><html><head><title>Winampify</title><style>html,body{margin:0;background:transparent;overflow:hidden}' +
     'img{display:block;width:100vw;height:100vh;visibility:hidden}img.on{visibility:visible}</style></head>' +
     "<body><img id=\"i\" alt=\"\" onload=\"this.classList.add('on')\" onerror=\"this.classList.remove('on')\"></body></html>"));
-  host.setAppDetails({
+  if (IS_WIN) host.setAppDetails({
     appId: 'Winampify', appIconPath: ICON, appIconIndex: 0,
     // packaged Winampify.exe relaunches itself; the dev copy needs the folder path too
     relaunchCommand: app.isPackaged ? `"${process.execPath}"` : `"${process.execPath}" "${ROOT}"`, relaunchDisplayName: 'Winampify',
@@ -169,7 +184,7 @@ app.whenReady().then(async () => {
   let playerBlurAt = 0;
   host.on('focus', () => {
     if (!win || win.isDestroyed()) return;
-    if (Date.now() - playerBlurAt < 400) { playerBlurAt = 0; host.minimize(); return; }
+    if (IS_WIN && Date.now() - playerBlurAt < 400) { playerBlurAt = 0; host.minimize(); return; }
     win.moveTop(); win.focus();
   });
   app.on('browser-window-blur', (_e, w) => { if (w === win) playerBlurAt = Date.now(); });
@@ -218,7 +233,9 @@ app.whenReady().then(async () => {
   }
 
   win = new BrowserWindow({
-    parent: host, skipTaskbar: true,
+    // macOS drags child windows along with their parent, and the host moves under the
+    // player, so there the layer stands alone and follows the host's minimize / restore
+    parent: IS_MAC ? undefined : host, skipTaskbar: true,
     x: first.x, y: first.y, width: first.width, height: first.height,
     frame: false, transparent: true, backgroundColor: '#00000000', hasShadow: false,
     resizable: false, movable: false, maximizable: false, fullscreenable: false,
@@ -229,7 +246,15 @@ app.whenReady().then(async () => {
       backgroundThrottling: false,                // keep playback and timers running when the app isn't focused
     },
   });
-  win.setIgnoreMouseEvents(true, { forward: true });
+  // Windows / macOS: clicks pass through until the mouse is over a Winampify window (the page
+  // reports it). Linux can't forward mouse moves to an ignoring window, so there the layer's
+  // X11 shape alone decides what it covers (see setShape below); start with almost nothing.
+  if (IS_LINUX) { try { win.setShape([{ x: 0, y: 0, width: 1, height: 1 }]); } catch {} }
+  else win.setIgnoreMouseEvents(true, { forward: true });
+  if (IS_MAC) {
+    host.on('minimize', () => { if (win && !win.isDestroyed()) win.hide(); });
+    host.on('restore', () => { if (win && !win.isDestroyed()) { win.show(); win.focus(); } });
+  }
   win.once('ready-to-show', () => { host.show(); win.show(); setThumbar(); });
   // Windows forgets the buttons when the taskbar restarts or the window is restored: set them again
   host.on('show', setThumbar); host.on('restore', setThumbar);
@@ -261,7 +286,9 @@ app.whenReady().then(async () => {
     shapeKey = key;
     try { win.setShape(rects && rects.length ? rects : []); } catch (e) { console.error('setShape', e); }
   };
-  ipcMain.on('layer-shape', (_e, rects) => setShape(rects));
+  // an empty shape means "the whole rectangle"; on Linux, where the shape is the only thing
+  // letting clicks through, nothing visible must mean (almost) nothing covered instead
+  ipcMain.on('layer-shape', (_e, rects) => setShape(IS_LINUX && !(rects && rects.length) ? [{ x: 0, y: 0, width: 1, height: 1 }] : rects));
   win.webContents.on('did-start-navigation', (d) => { if (d.isMainFrame && !String(d.url).startsWith(ORIGIN)) setShape([]); });
 
   // Spotify login pop-up: a small window just for Spotify's sign-in page. When Spotify sends
@@ -274,7 +301,7 @@ app.whenReady().then(async () => {
     const area = screen.getDisplayMatching(host.getBounds()).workArea;
     loginWin = new BrowserWindow({
       width: W, height: H, x: Math.round(area.x + (area.width - W) / 2), y: Math.round(area.y + Math.max(0, (area.height - H) / 2)),
-      parent: host, modal: false, minimizable: false, maximizable: false, fullscreenable: false,
+      parent: IS_MAC ? undefined : host, modal: false, minimizable: false, maximizable: false, fullscreenable: false,
       title: 'Winampify - Log in to Spotify', icon: ICON, backgroundColor: '#121212', autoHideMenuBar: true,
       webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
     });
@@ -300,13 +327,13 @@ app.whenReady().then(async () => {
     loginWin.loadURL(url);
   });
 
-  ipcMain.on('ui-hover', (_e, over) => { if (win && !win.isDestroyed()) win.setIgnoreMouseEvents(!over, { forward: true }); });
+  ipcMain.on('ui-hover', (_e, over) => { if (!IS_LINUX && win && !win.isDestroyed()) win.setIgnoreMouseEvents(!over, { forward: true }); });
   // Balance: a tiny helper sets the left/right volume of Winampify's own sound in Windows
   // (the same per-app volume the Windows mixer uses). It quits when Winampify does.
   let balancer = null;
   try {
     const exe = path.join(ROOT, 'helpers', 'balance.exe');
-    if (fs.existsSync(exe)) {
+    if (IS_WIN && fs.existsSync(exe)) {
       balancer = spawn(exe, [path.parse(process.execPath).name], { stdio: ['pipe', 'ignore', 'ignore'], windowsHide: true });
       balancer.on('error', () => { balancer = null; });
       balancer.on('exit', () => { balancer = null; });
@@ -334,6 +361,8 @@ app.whenReady().then(async () => {
   ipcMain.on('update-install', () => installUpdate());
   async function checkForUpdate(manual = false) {
     if (UPD.busy) return;
+    // the self-updater installs MSI packages, so it only runs on Windows
+    if (!IS_WIN) { if (manual) say({ state: 'error', message: 'automatic updates are Windows-only; get new Mac / Linux builds from GitHub releases' }); return; }
     try {
       const rel = await ghJson(`https://api.github.com/repos/${REPO}/releases/latest`);
       const version = String(rel.tag_name || '').replace(/^v/, '');
@@ -386,7 +415,7 @@ app.whenReady().then(async () => {
       say({ state: 'error', message: e.message });
     }
   }
-  if (app.isPackaged) {
+  if (app.isPackaged && IS_WIN) {
     setTimeout(() => checkForUpdate(false), 20000);
     setInterval(() => checkForUpdate(false), 12 * 3600000);
   }
