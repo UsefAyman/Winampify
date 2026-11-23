@@ -1983,6 +1983,10 @@ function winDialog({ title = 'WINAMPIFY', message = '', fields = [], ok = 'OK', 
     closeMenus();
     const back = document.createElement('div');
     back.className = 'dlg-back';
+    // centered on the monitor the player is on (not across all monitors, which puts it on the
+    // seam between two screens)
+    const d = (isShown('main') && displayOf(winEl('main'))) || primaryDisplay();
+    Object.assign(back.style, { inset: 'auto', left: d.x + 'px', top: d.y + 'px', width: d.w + 'px', height: d.h + 'px' });
     back.innerHTML =
       `<div class="win dlg active${image || wide ? ' wide' : ''}" role="dialog" aria-label="${esc(title)}">` +
       `<div class="title"><span class="ridge"></span><span class="tname">${esc(title)}</span><span class="ridge"></span><span class="tbtn" data-x title="Close">&times;</span></div>` +
@@ -2477,10 +2481,11 @@ function dockedGroup(start) {
 }
 
 /* ------------------------------------------------------------------ About box */
-function showAbout() {
-  const ver = '1.0.0';
+async function showAbout() {
+  // the real version (the one in package.json, same as the updater and the GitHub release)
+  const ver = APP_VERSION || (await window.desktop?.appVersion?.().catch(() => '')) || '';
   winAlert([
-    `WINAMPIFY ${ver}`,
+    `WINAMPIFY ${ver}`.trim(),
     'A classic-style desktop music player for your Spotify account.',
     '',
     'UNOFFICIAL SOFTWARE',
@@ -2491,10 +2496,14 @@ function showAbout() {
     '- Your own Spotify developer app (Client ID), since Spotify only allows a handful of users per app in development mode',
     '',
     'KEYBOARD',
-    'Z prev   X play   C pause   V stop   B next',
-    'S shuffle   R repeat   L library',
+    'Space: play / pause      Ctrl+Right / Ctrl+Left: next / previous',
+    'Ctrl+S shuffle   Ctrl+R repeat   Ctrl+Up / Ctrl+Down volume   Ctrl+Shift+Down mute',
+    'Ctrl+K or Ctrl+L: search Spotify   Ctrl+F: search inside the open playlist / Liked Songs',
+    'Ctrl+N new playlist   Alt+Left / Alt+Right back / forward   Ctrl+P settings',
+    'Classic keys: Z prev  X play  C pause  V stop  B next  S shuffle  R repeat  L library',
     'Left / Right: seek 5 s      Up / Down: volume',
     'Playlist window: Enter plays, Del removes, Ctrl+A selects all',
+    'While you type in a box, keys go to the box (Ctrl+K / L / F just jump to search)',
     '',
     'TIPS',
     '- Drag a window next to another to dock it; dragging the main player\'s title bar moves everything docked to it',
@@ -2506,15 +2515,20 @@ function showAbout() {
     '',
     'GOOD TO KNOW',
     '- Balance really pans Winampify\'s sound (left / right) through Windows',
-    '- Up Next (the UP button) shows Spotify\'s queue: double-click a song to jump to it',
-    '- Spotify limits how many requests an app may make; if playlists stop loading for a while, Winampify retries by itself',
+    '- Up Next (the UP button) shows what plays next: double-click a song to jump to it',
+    '- Spotify limits how many requests an app may make, so Winampify keeps copies of your playlists and lists on this PC and asks Spotify as rarely as it can. If Spotify asks to wait, saved copies keep working',
+    '- Updates: Winampify checks for new versions and asks before installing (Settings > Check for updates)',
+    '- Windows media controls, media keys and the taskbar preview buttons control Winampify too',
     '- Your login and settings are stored only on this PC. Troubleshooting log: %APPDATA%\\winampify\\winampify.log',
     '',
     'CREDITS',
     'Music and playback: Spotify Web API and Web Playback SDK',
     'Lyrics: LRCLIB (lrclib.net)',
     'Artist info: MusicBrainz and Wikipedia',
+    'Similar music: Deezer (related artists)',
+    'Visualizer: Butterchurn (MilkDrop presets)',
     'Desktop app: Electron (castLabs build with Widevine)',
+    'github.com/mixooo/Winampify',
   ].join('\n'), { title: 'ABOUT WINAMPIFY', ok: 'Close', wide: true });
 }
 
