@@ -54,6 +54,25 @@ Needs **Spotify Premium** (Spotify's rule for playback in third-party apps).
 - Previous, Play, Pause, Stop and Next buttons in the taskbar preview.
 - Shows in the taskbar and Alt-Tab like any app.
 
+## Keyboard shortcuts
+
+| Action | Keys |
+|---|---|
+| Play / pause | `Space` |
+| Next / previous track | `Ctrl + →` / `Ctrl + ←` |
+| Shuffle / repeat | `Ctrl + S` / `Ctrl + R` |
+| Volume up / down | `Ctrl + ↑` / `Ctrl + ↓` (or `↑` / `↓`) |
+| Mute / unmute | `Ctrl + Shift + ↓` |
+| Seek 5 seconds | `←` / `→` |
+| Search Spotify | `Ctrl + K` or `Ctrl + L` |
+| Search inside the open playlist or Liked Songs | `Ctrl + F` |
+| Create a new playlist | `Ctrl + N` |
+| Back / forward in the library | `Alt + ←` / `Alt + →` |
+| Settings | `Ctrl + P` |
+| Classic keys | `Z` previous, `X` play, `C` pause, `V` stop, `B` next, `S` shuffle, `R` repeat, `L` library |
+
+While you're typing in a box (search, a playlist name, a dialog), keys go to the box. The only exceptions are `Ctrl + K`, `Ctrl + L` and `Ctrl + F`, which just move you to the search box.
+
 ## Built to avoid Spotify's cooldowns
 
 Spotify apps in developer mode get blocked for an hour or more when they ask too often. Winampify is designed to ask as rarely as possible:

@@ -610,7 +610,7 @@ function setupLib() {
     if (!listSearchable(L.view)) return;
     clearTimeout(typing); typing = setTimeout(() => filterView($('#q').value), 250);
   });
-  $('#lib-back').onclick = () => { const v = L.history.pop(); if (v) setView(v, false); };
+  $('#lib-back').onclick = libBack;
   $('#lib-play').onclick = () => libSend(true);
   $('#lib-enq').onclick = () => libSend(false);
   $('#lib-more').onclick = loadMore;
@@ -809,7 +809,7 @@ function renderTree() {
 /* views */
 function setView(v, push = true) {
   if (!v.tabs && !v.filter && $('#q')) $('#q').value = ''; // new list: start with an empty search box
-  if (push && L.view) L.history.push(L.view);
+  if (push && L.view) { L.history.push(L.view); L.fwd = []; }
   if (L.history.length > 30) L.history.shift();
   L.view = v; L.sel.clear(); L.anchor = -1;
   if (v.node) { L.node = v.node; renderTree(); }
@@ -1572,20 +1572,7 @@ function mainMenu(e) {
         label: n, check: Math.abs(cur - crispZoom(k)) < 0.01, fn: () => { setZoom(crispZoom(k)); showMsg('SIZE: ' + n.toUpperCase()); },
       }));
     } },
-    { label: 'Settings', sub: () => [
-      { label: 'Always on top', check: LS.get('onTop', false), disabled: !window.desktop?.setOnTop, fn: () => setOnTop(!LS.get('onTop', false)) },
-      { label: 'After a searched song, play similar music', check: radioEnabled(), fn: () => { LS.set('songRadio', !radioEnabled()); showMsg(radioEnabled() ? 'SEARCHED SONGS: SIMILAR MUSIC PLAYS NEXT' : 'SEARCHED SONGS: THE OTHER RESULTS PLAY NEXT', 2500); } },
-      '-',
-      { label: 'Reset windows to default (positions and sizes)', fn: resetWindows },
-      { label: 'Reset table column widths', fn: resetColumns },
-      { label: 'Reset library sidebar width', fn: () => { LS.del('treeW'); $('.treecol').style.width = ''; showMsg('SIDEBAR WIDTH RESET'); } },
-      '-',
-      { label: 'Reset everything above', fn: () => { resetWindows(); resetColumns(); LS.del('treeW'); $('.treecol').style.width = ''; } },
-      '-',
-      { label: 'Clear saved playlists and songs (cache)', fn: clearCache },
-      '-',
-      { label: 'Check for updates' + (APP_VERSION ? ` (you have ${APP_VERSION})` : ''), disabled: !window.desktop?.checkUpdate, fn: () => { showMsg('CHECKING FOR UPDATES...', 1500); window.desktop.checkUpdate(); } },
-    ] },
+    { label: 'Settings   (Ctrl+P)', sub: settingsItems },
     '-',
     ['Time: elapsed / remaining', () => { S.remaining = !S.remaining; LS.set('remaining', S.remaining); }],
     ['Log out of Spotify', () => openNode('logout')],
@@ -1593,12 +1580,51 @@ function mainMenu(e) {
   ]);
 }
 
+function settingsItems() {
+  return [
+    { label: 'Always on top', check: LS.get('onTop', false), disabled: !window.desktop?.setOnTop, fn: () => setOnTop(!LS.get('onTop', false)) },
+    { label: 'After a searched song, play similar music', check: radioEnabled(), fn: () => { LS.set('songRadio', !radioEnabled()); showMsg(radioEnabled() ? 'SEARCHED SONGS: SIMILAR MUSIC PLAYS NEXT' : 'SEARCHED SONGS: THE OTHER RESULTS PLAY NEXT', 2500); } },
+    '-',
+    { label: 'Reset windows to default (positions and sizes)', fn: resetWindows },
+    { label: 'Reset table column widths', fn: resetColumns },
+    { label: 'Reset library sidebar width', fn: () => { LS.del('treeW'); $('.treecol').style.width = ''; showMsg('SIDEBAR WIDTH RESET'); } },
+    '-',
+    { label: 'Reset everything above', fn: () => { resetWindows(); resetColumns(); LS.del('treeW'); $('.treecol').style.width = ''; } },
+    '-',
+    { label: 'Clear saved playlists and songs (cache)', fn: clearCache },
+    '-',
+    { label: 'Check for updates' + (APP_VERSION ? ` (you have ${APP_VERSION})` : ''), disabled: !window.desktop?.checkUpdate, fn: () => { showMsg('CHECKING FOR UPDATES...', 1500); window.desktop.checkUpdate(); } },
+  ];
+}
+
 /* ------------------------------------------------------------------ keyboard */
 function setupKeys() {
   addEventListener('keydown', e => {
     if (menuKey(e)) { e.preventDefault(); return; }
-    if (e.target.matches('input:not([type=range]), textarea')) return;
     const k = e.key.toLowerCase();
+    const ctrl = e.ctrlKey && !e.metaKey;
+    // Ctrl+K / Ctrl+L / Ctrl+F only move you to the search box, so they work even while typing
+    if (ctrl && !e.altKey && !e.shiftKey && (k === 'k' || k === 'l' || k === 'f')) { focusSearch(k === 'f' ? 'list' : 'spotify'); e.preventDefault(); return; }
+    // typing in a box (search, playlist name, Client ID...): every other key belongs to the box
+    if (e.target.matches('input:not([type=range]):not([type=checkbox]):not([type=radio]), textarea, select, [contenteditable=""], [contenteditable="true"]')) return;
+    if (ctrl && !e.altKey) {
+      const act = {
+        arrowright: () => T.next(), arrowleft: () => T.prev(),
+        arrowup: () => { setVol(S.vol + 5); showMsg('VOLUME: ' + S.vol + '%', 1000); },
+        arrowdown: () => (e.shiftKey ? toggleMute() : (setVol(S.vol - 5), showMsg('VOLUME: ' + S.vol + '%', 1000))),
+        s: () => T.shuffle(), r: () => T.repeat(),
+        n: () => { if (S.me) createPlaylist(); else showMsg('CONNECT SPOTIFY FIRST', 2000); },
+        p: () => openSettingsMenu(),
+      }[k];
+      // Ctrl+Shift is only used for mute; Ctrl+A in the playlist window is handled below
+      if (act && (!e.shiftKey || k === 'arrowdown')) { act(); e.preventDefault(); return; }
+    }
+    if (e.altKey && !e.ctrlKey && (k === 'arrowleft' || k === 'arrowright')) { (k === 'arrowleft' ? libBack : libForward)(); e.preventDefault(); return; }
+    if (k === ' ' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      // Space: play / pause (and never "clicks" the button that happens to have focus)
+      if (S.track) T.pause(); else T.play();
+      e.preventDefault(); return;
+    }
     const plFocused = document.activeElement === $('#pllist');
     if (plFocused && (k === 'delete' || k === 'backspace')) { plRemove(); e.preventDefault(); return; }
     if (plFocused && k === 'a' && (e.ctrlKey || e.metaKey)) { S.plSel = new Set(S.pl.map((_, i) => i)); renderPL(false); e.preventDefault(); return; }
@@ -3439,6 +3465,37 @@ async function cleanSaved() {
   LS.set('dbUsed', used);
   LS.set('savedAnswers', LS.get('savedAnswers', []).filter(p => used['get:' + p]));
   console.log('[cleanup] saved items:', keys.length, 'removed unused:', old.length, 'trimmed:', trimmed, 'storage MB:', est ? (est.usage / 1048576).toFixed(1) : '?');
+}
+
+/* ------------------------------------------------------------------ shortcut helpers */
+/* Ctrl+K / Ctrl+L: search all of Spotify. Ctrl+F: search inside the open list (Liked Songs or a
+   playlist); anywhere else it searches Spotify too. */
+function focusSearch(where) {
+  if (!S.me) return showMsg('CONNECT SPOTIFY FIRST', 2000);
+  showWin('lib', true);
+  if (where === 'spotify' && listSearchable(L.view)) openNode('search');
+  if (where === 'list' && !listSearchable(L.view)) showMsg('OPEN LIKED SONGS OR A PLAYLIST TO SEARCH INSIDE IT', 2500);
+  const q = $('#q'); q.focus(); q.select();
+}
+function libBack() {
+  const v = L.history.pop(); if (!v) return;
+  if (L.view) (L.fwd ||= []).push(L.view);
+  setView(v, false);
+}
+function libForward() {
+  const v = L.fwd?.pop(); if (!v) return;
+  if (L.view) L.history.push(L.view);
+  setView(v, false);
+}
+function toggleMute() {
+  if (S.vol > 0) { S.unmuteVol = S.vol; setVol(0); showMsg('MUTED  (CTRL+SHIFT+DOWN AGAIN TO UNMUTE)', 1800); }
+  else { setVol(S.unmuteVol || 50); showMsg('VOLUME: ' + S.vol + '%', 1000); }
+}
+/* Ctrl+P: the Settings menu, opened at the main window's options button */
+function openSettingsMenu() {
+  const o = $('[data-cl="o"]') || $('#w-main');
+  const r = o.getBoundingClientRect();
+  openMenu({ clientX: r.right, clientY: r.top }, settingsItems());
 }
 
 /* start after every section above is defined (keep this the last line) */
