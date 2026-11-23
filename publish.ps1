@@ -5,7 +5,9 @@
 # 3) writes the MSI's SHA-256 fingerprint next to it (the updater refuses an MSI without a match)
 # 4) commits and pushes, then creates the GitHub release with the MSI and its fingerprint
 param([string]$NotesFile = '')
-$ErrorActionPreference = 'Stop'
+# (each step's exit code is checked below; 'Stop' would treat any tool's progress output on
+#  stderr as a failure in Windows PowerShell)
+$ErrorActionPreference = 'Continue'
 Set-Location $PSScriptRoot
 
 # 1) version
