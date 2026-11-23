@@ -1,4 +1,4 @@
-Unofficial Mac and Linux builds of Winampify (the classic-style desktop player for Spotify Premium). Built automatically from this fork by GitHub Actions. **Test builds:** they start, but haven't been tried on a real Mac or Linux PC yet.
+Unofficial Mac and Linux builds of Winampify (the classic-style desktop player for Spotify Premium). Built automatically by GitHub Actions. **Test builds:** they start, but haven't been tried on a real Mac or Linux PC yet.
 
 ## Downloads
 
